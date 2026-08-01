@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { ListenMode } from './components/ListenMode';
 import { QuizMode } from './components/QuizMode';
+import { SRSDashboard } from './components/SRSDashboard';
 import { RecipeManager } from './components/RecipeManager';
 import { SettingsModal } from './components/SettingsModal';
 import type { Recipe } from './types/recipe';
@@ -16,7 +17,7 @@ function App() {
     if (!saved) return initialRecipes as Recipe[];
     try {
       const parsed = JSON.parse(saved);
-      // Auto-migrate if missing new mocha recipes
+      // Auto-migrate if missing mocha recipes
       if (Array.isArray(parsed) && !parsed.some(r => r.id === 'hot-mocha')) {
         return initialRecipes as Recipe[];
       }
@@ -45,16 +46,17 @@ function App() {
     setSelectedRecipe((initialRecipes as Recipe[])[0]);
   };
 
-  const versionText = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.2.1';
+  const versionText = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.5.0';
   const commitText = typeof __GIT_COMMIT_HASH__ !== 'undefined' ? __GIT_COMMIT_HASH__ : 'dev';
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)' }}>
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} dueCount={dueCount} />
       
-      <main style={{ flex: 1, padding: '1.5rem 1rem', maxWidth: '720px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+      <main style={{ flex: 1, padding: '1.5rem 1rem', maxWidth: '780px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
         {activeTab === 'listen' && <ListenMode recipe={selectedRecipe || recipes[0]} recipes={recipes} onSelectRecipe={setSelectedRecipe} />}
         {activeTab === 'quiz' && <QuizMode recipes={recipes} onComplete={() => setActiveTab('recipes')} />}
+        {activeTab === 'srs' && <SRSDashboard recipes={recipes} />}
         {activeTab === 'recipes' && <RecipeManager recipes={recipes} setRecipes={setRecipes} onSelect={handleSelectRecipe} onReset={handleResetRecipes} />}
         {activeTab === 'settings' && <SettingsModal onResetRecipes={handleResetRecipes} />}
       </main>

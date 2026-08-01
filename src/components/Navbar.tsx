@@ -1,5 +1,5 @@
 import { SirenLogo } from './SirenLogo';
-import { Headphones, Mic, BookOpen, Settings } from 'lucide-react';
+import { Headphones, Mic, BookOpen, BarChart2, Settings } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: string;
@@ -11,6 +11,7 @@ export function Navbar({ activeTab, setActiveTab, dueCount }: NavbarProps) {
   const tabs = [
     { id: 'listen', label: 'Listen', icon: Headphones },
     { id: 'quiz', label: 'Quiz', icon: Mic },
+    { id: 'srs', label: 'SRS Metrics', icon: BarChart2 },
     { id: 'recipes', label: 'Recipes', icon: BookOpen },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];

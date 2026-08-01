@@ -4,6 +4,8 @@ export interface WeightData {
   correctCount: number;           // Lifetime correct counter
   incorrectCount: number;         // Lifetime incorrect counter
   turnsSinceLastGraded: number;   // Turns since last graded encounter
+  lastGradedTimestamp?: number;   // Epoch timestamp ms of last graded encounter
+  lastSpeedMs?: number;           // Time taken in ms for the drill response
 }
 
 export class SRSEngine {
@@ -23,7 +25,7 @@ export class SRSEngine {
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
   }
 
-  static updateItem(id: string, pass: boolean, allRecipeIds: string[]): WeightData {
+  static updateItem(id: string, pass: boolean, allRecipeIds: string[], speedMs?: number): WeightData {
     const all = this.loadAll();
     
     // Ensure all recipes exist in state
@@ -40,6 +42,10 @@ export class SRSEngine {
     });
 
     const target = all[id];
+    target.lastGradedTimestamp = Date.now();
+    if (speedMs) {
+      target.lastSpeedMs = speedMs;
+    }
 
     if (pass) {
       target.correctCount += 1;
