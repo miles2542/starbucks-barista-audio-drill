@@ -37,6 +37,7 @@ CRITICAL STARBUCKS RECIPE CONTEXT & EVALUATION RULES:
    - ASR PHONETIC RECOGNITION: Recognize English terms spoken with Vietnamese accent or phonetically transliterated:
      * "hạt lờ tề" / "lờ tề" = Hot Latte / Latte
      * "hạt mocha" / "lờ mocha" = Hot Mocha / Mocha
+     * "hạt caramel macchiato" / "mát ki a tô" = Hot Caramel Macchiato / Caramel Macchiato
      * "dieu tien" / "điều tiên" = đầu tiên
      * "kem" / "đá" / "phum" / "xirô" = syrup / ice / pumps
    - In "transcribedSpeech", transcribe into clean, natural Vietnamese + English terms.
@@ -46,6 +47,8 @@ CRITICAL STARBUCKS RECIPE CONTEXT & EVALUATION RULES:
    - Iced Cappuccino (C): Foam MUST be under 6mm from rim ("foam dưới 6mm / cách 6mm"), NOT ice!
    - Hot Mocha (M): MUST stir espresso with mocha sauce, milk to 12mm below rim (NO FOAM), top with whipped cream.
    - Iced Mocha (M): MUST stir espresso with mocha sauce, milk to top line, ice to 6mm below rim, top with whipped cream (dome cap recommended).
+   - Hot Caramel Macchiato (CM): MUST mention BOTH Vanilla AND Classic syrups (1 2 3 4 each), shots in shot glass, pour milk/foam 12mm below rim, shots poured through foam, caramel sauce 7-7-2.
+   - Iced Caramel Macchiato (CM): MUST mention BOTH Vanilla AND Classic syrups (2 3 4 each), shots in shot glass, milk to top line, ice to 12mm below rim, shots poured on top of ice, caramel sauce 7-7-2.
 
 3. ADAPTIVE FLEXIBILITY & SELF-CORRECTION (MUST PASS IF SELF-CORRECTED):
    - SELF-CORRECTION RULE: If trainee accidentally recites step B before step A, but immediately self-corrects ("thực ra phải làm step A trước rồi mới làm step B"), treat this as 100% CORRECT PASS!
