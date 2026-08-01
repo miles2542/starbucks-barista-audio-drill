@@ -188,8 +188,8 @@ export class AudioListener {
                     this.onInterimResultCallback(fullTranscript);
                 }
 
-                // Explicit end command phrase matching at the trailing end of speech
-                const endTriggerRegex = /(?:^|\s)(over|ô vơ|ơ vơ|xong rồi|over mark|over store)[\s.,!?]*$/i;
+                // Official End Command Trigger Phrase: "Headphone" (with Vietnamese & English ASR phonetic variations)
+                const endTriggerRegex = /(?:^|\s)(headphone|head\s*phone|hét\s*phôn|het\s*phone|hét\s*phone)[\s.,!?]*$/i;
                 
                 if (endTriggerRegex.test(fullTranscript)) {
                     // Cancel any previous validation timer
@@ -200,12 +200,12 @@ export class AudioListener {
                     this.triggerValidationTimer = window.setTimeout(() => {
                         let cleanText = fullTranscript.replace(endTriggerRegex, '').trim();
                         this.currentTranscript = cleanText.length > 0 ? cleanText : fullTranscript;
-                        console.log('[AudioListener] Confirmed end trigger at tail end of speech. Submitting recording...');
+                        console.log('[AudioListener] Headphone trigger confirmed. Submitting recording...');
                         this.stopManual();
                     }, 600);
 
                 } else {
-                    // New words arrived after trigger word -> it was spoken mid-sentence! Cancel validation timer.
+                    // New words arrived after trigger word -> cancel validation timer.
                     this.clearTriggerValidationTimer();
                     if (finalTranscript) {
                         this.currentTranscript = (this.currentTranscript + ' ' + finalTranscript).trim();

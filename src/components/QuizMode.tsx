@@ -395,7 +395,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
             {isGrading ? (
               'Store Manager evaluating your recipe recall...'
             ) : isListening ? (
-              'Listening... Recite 4 steps, then say "Over" or pause 7s'
+              'Listening... Recite 4 steps, then say "Headphone" or pause 7s'
             ) : (
               'Tap microphone to speak recipe'
             )}
