@@ -13,12 +13,12 @@ import './App.css';
 function App() {
   const [activeTab, setActiveTab] = useState('quiz');
   const [recipes, setRecipes] = useState<Recipe[]>(() => {
-    const saved = localStorage.getItem('starbucks_recipes_v3');
+    const saved = localStorage.getItem('starbucks_recipes_v4');
     if (!saved) return initialRecipes as Recipe[];
     try {
       const parsed = JSON.parse(saved);
-      // Auto-migrate if missing mocha recipes
-      if (Array.isArray(parsed) && !parsed.some(r => r.id === 'hot-mocha')) {
+      // Auto-migrate if missing caramel macchiato recipes or incomplete length
+      if (!Array.isArray(parsed) || parsed.length < (initialRecipes as Recipe[]).length || !parsed.some(r => r.id === 'hot-caramel-macchiato')) {
         return initialRecipes as Recipe[];
       }
       return parsed;
@@ -30,7 +30,7 @@ function App() {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(recipes[0] || null);
 
   useEffect(() => {
-    localStorage.setItem('starbucks_recipes_v3', JSON.stringify(recipes));
+    localStorage.setItem('starbucks_recipes_v4', JSON.stringify(recipes));
   }, [recipes]);
 
   const dueCount = SRSEngine.getDueItems(recipes).length;
@@ -42,11 +42,11 @@ function App() {
 
   const handleResetRecipes = () => {
     setRecipes(initialRecipes as Recipe[]);
-    localStorage.setItem('starbucks_recipes_v3', JSON.stringify(initialRecipes));
+    localStorage.setItem('starbucks_recipes_v4', JSON.stringify(initialRecipes));
     setSelectedRecipe((initialRecipes as Recipe[])[0]);
   };
 
-  const versionText = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.5.0';
+  const versionText = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.6.0';
   const commitText = typeof __GIT_COMMIT_HASH__ !== 'undefined' ? __GIT_COMMIT_HASH__ : 'dev';
 
   return (
