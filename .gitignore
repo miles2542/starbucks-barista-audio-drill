@@ -26,3 +26,5 @@ dev_docs/
 *.njsproj
 *.sln
 *.sw?
+
+.vercel

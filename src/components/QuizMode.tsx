@@ -3,7 +3,7 @@ import type { Recipe } from '../types/recipe';
 import { audioListener, speakTextGemini, speakTextWeb } from '../services/audioEngine';
 import { SRSEngine } from '../services/srsEngine';
 import { evaluateWithGemini, lastEvaluationDebugLog, type EvaluationDebugLog, type EvaluationResult } from '../services/geminiGrader';
-import { Mic, Check, X, Loader, Award, RefreshCw, Square, FileText, Terminal, XCircle, Volume2, MessageSquare, Sparkles, Sliders, RotateCcw, Ban, Shuffle, AlertTriangle } from 'lucide-react';
+import { Mic, Check, X, Loader, Award, RefreshCw, Square, FileText, Terminal, XCircle, Volume2, MessageSquare, Sparkles, Sliders, RotateCcw, Ban, Shuffle, AlertTriangle, Key } from 'lucide-react';
 
 interface QuizModeProps {
   recipes: Recipe[];
@@ -292,6 +292,25 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           <Shuffle size={14} /> Skip Drink
         </button>
       </div>
+
+      {/* Missing API Key Alert Banner for New Trainees */}
+      {!apiKey && (
+        <div style={{
+          background: 'rgba(245, 158, 11, 0.12)',
+          border: '1px solid #F59E0B',
+          padding: '0.85rem 1.25rem',
+          borderRadius: '8px',
+          fontSize: '0.85rem',
+          color: '#FFF',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          textAlign: 'left'
+        }}>
+          <Key size={20} style={{ color: '#F59E0B', flexShrink: 0 }} />
+          <span><strong>No Gemini API Key Saved:</strong> Please enter your free key in Settings to activate AI Store Manager grading & voice output.</span>
+        </div>
+      )}
 
       <div>
         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-mint)', letterSpacing: '1px', textTransform: 'uppercase' }}>
