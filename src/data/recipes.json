@@ -1,0 +1,74 @@
+[
+  {
+    "id": "hot-latte",
+    "name": "Hot Latte (L)",
+    "code": "L (HOT)",
+    "type": "hot",
+    "steps": {
+      "steamMilk": "Steam milk: 1-3s",
+      "queueShots": "Queue shots: 1 2 2 3 (thẳng vào cốc, không vào shot glass)",
+      "pumpSyrup": "Add syrup: 2 3 4 5 (mặc định áp dụng cho flavor & classic syrups), only if requested",
+      "finish": "Finish & Connect: Đổ sữa đến dưới miệng cốc 6mm, kết thúc bằng latte art"
+    }
+  },
+  {
+    "id": "iced-latte",
+    "name": "Iced Latte (L)",
+    "code": "L (ICED)",
+    "type": "iced",
+    "steps": {
+      "steamMilk": "None (No steaming)",
+      "queueShots": "Queue shots: 2 2 3 (vào shot glass)",
+      "pumpSyrup": "Add syrup: 3 4 5, only if requested",
+      "finish": "Finish & Connect: Đổ sữa đến dưới vạch cao nhất 6mm -> Đổ shots -> Đổ đá đến cách miệng cốc 6mm"
+    }
+  },
+  {
+    "id": "hot-cappuccino",
+    "name": "Hot Cappuccino (C)",
+    "code": "C (HOT)",
+    "type": "hot",
+    "steps": {
+      "steamMilk": "Steam milk: 6-8s (giảm size - trừ nếu gọi size Tall thì vẫn giữ nguyên lượng sữa cho size Tall)",
+      "queueShots": "Queue shots: 1 2 2 3 (thẳng vào cốc)",
+      "pumpSyrup": "Add syrups: 1 2 3 4, only if requested",
+      "finish": "Finish & Connect: Đổ sữa đến dưới miệng cốc 6mm"
+    }
+  },
+  {
+    "id": "iced-cappuccino",
+    "name": "Iced Cappuccino (C)",
+    "code": "C (ICED)",
+    "type": "iced",
+    "steps": {
+      "steamMilk": "Steam milk: Tall size 6-8s (mọi size đều steam milk ở mức Tall)",
+      "queueShots": "Queue shots: 2 2 3 (vào shot glass)",
+      "pumpSyrup": "Add syrup: 2 3 4, only if requested",
+      "finish": "Finish & Connect: Đổ sữa dưới vạch giữa 6mm -> Đổ shots -> Đổ đá đến top logo -> Đổ đá dưới miệng cốc 6mm"
+    }
+  },
+  {
+    "id": "hot-americano",
+    "name": "Hot Americano (A)",
+    "code": "A (HOT)",
+    "type": "hot",
+    "steps": {
+      "steamMilk": "None (No steaming)",
+      "queueShots": "Queue shots: 1 2 3 4 (thẳng vào cốc)",
+      "pumpSyrup": "Add syrup: 2 3 4 5, only if requested",
+      "finish": "Finish & Connect: (Hot) Cup sleeve -> Đổ nước nóng đến miệng cốc 6mm"
+    }
+  },
+  {
+    "id": "iced-americano",
+    "name": "Iced Americano (A)",
+    "code": "A (ICED)",
+    "type": "iced",
+    "steps": {
+      "steamMilk": "None (No steaming)",
+      "queueShots": "Queue shots: 2 3 4 (vào shot glass)",
+      "pumpSyrup": "Add syrup: 3 4 5, only if requested",
+      "finish": "Finish & Connect: Đổ nước lọc (thường) dưới vạch cao nhất 6mm -> Đổ shots -> Đổ đá dưới miệng cốc 6mm"
+    }
+  }
+]
