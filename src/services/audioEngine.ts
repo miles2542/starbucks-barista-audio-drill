@@ -57,6 +57,12 @@ export const speakTextGemini = async (text: string, apiKey?: string, rate: numbe
         return false;
     }
 
+    // Clean markdown formatting characters before passing to TTS voice engine
+    const cleanSpeechText = text
+        .replace(/[*_#`~]/g, '')
+        .replace(/\n+/g, '. ')
+        .trim();
+
     try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent?key=${apiKey}`;
         const response = await fetch(url, {
@@ -64,7 +70,7 @@ export const speakTextGemini = async (text: string, apiKey?: string, rate: numbe
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{
-                    parts: [{ text: `Read this Starbucks recipe clearly and naturally: ${text}` }]
+                    parts: [{ text: `Read this Starbucks recipe clearly and naturally: ${cleanSpeechText}` }]
                 }],
                 generationConfig: {
                     responseModalities: ["AUDIO"],
@@ -81,7 +87,7 @@ export const speakTextGemini = async (text: string, apiKey?: string, rate: numbe
 
         if (!response.ok) {
             console.warn('Gemini 3.1 TTS API error, falling back to Web Speech API', response.status);
-            speakTextWeb(text, rate);
+            speakTextWeb(cleanSpeechText, rate);
             return false;
         }
 
@@ -100,7 +106,7 @@ export const speakTextGemini = async (text: string, apiKey?: string, rate: numbe
 
         if (!pcmBase64) {
             console.warn('No audio data in Gemini 3.1 response, falling back to Web Speech API');
-            speakTextWeb(text, rate);
+            speakTextWeb(cleanSpeechText, rate);
             return false;
         }
 
@@ -117,7 +123,7 @@ export const speakTextGemini = async (text: string, apiKey?: string, rate: numbe
         return true;
     } catch (e) {
         console.warn('Gemini 3.1 TTS exception, falling back to Web Speech API', e);
-        speakTextWeb(text, rate);
+        speakTextWeb(cleanSpeechText, rate);
         return false;
     }
 };
@@ -175,25 +181,22 @@ export class AudioListener {
                     }
                 }
 
-                const fullTranscript = (this.currentTranscript + finalTranscript + interimTranscript).trim();
+                const fullTranscript = (this.currentTranscript + ' ' + finalTranscript + ' ' + interimTranscript).trim();
                 
                 if (this.onInterimResultCallback) {
                     this.onInterimResultCallback(fullTranscript);
                 }
 
-                const lower = fullTranscript.toLowerCase();
-                const triggerWords = ['over', 'hết', 'done', 'finish', 'check', 'xong'];
+                // Robust multi-trigger word matching for "Over" (handles English & Vietnamese ASR phonetic variations + trailing punctuation)
+                const triggerRegex = /(?:^|\s)(over|ô vơ|ơ vơ|ơi|hết|done|finish|check|xong|over\.|hết\.)[\s.,!?]*$/i;
                 
-                if (triggerWords.some(w => lower.endsWith(w) || lower.includes(` ${w}`))) {
-                    let cleanText = fullTranscript;
-                    triggerWords.forEach(w => {
-                        cleanText = cleanText.replace(new RegExp(`\\b${w}\\b`, 'gi'), '');
-                    });
-                    cleanText = cleanText.trim();
+                if (triggerRegex.test(fullTranscript) || triggerRegex.test(interimTranscript) || triggerRegex.test(finalTranscript)) {
+                    let cleanText = fullTranscript.replace(triggerRegex, '').trim();
                     this.currentTranscript = cleanText.length > 0 ? cleanText : fullTranscript;
+                    console.log('[AudioListener] Over trigger detected. Auto-ending recording...');
                     this.stopManual();
                 } else if (finalTranscript) {
-                    this.currentTranscript += ' ' + finalTranscript;
+                    this.currentTranscript = (this.currentTranscript + ' ' + finalTranscript).trim();
                 }
             };
 

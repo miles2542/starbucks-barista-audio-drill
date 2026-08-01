@@ -57,25 +57,24 @@ CRITICAL STARBUCKS RECIPE CONTEXT & EVALUATION RULES:
 4. NO SPEECH DETECTED / SYSTEM ERROR HANDLING:
    - If the audio clip is silent, empty, or contains no audible voice, set "isError": true, "pass": false, "score": 0, and "feedback": "No speech audio detected. Please check microphone and speak clearly into the mic."
 
-5. EVALUATION & SPECIFIC TERSE STORE MANAGER FEEDBACK RULES:
+5. EVALUATION & WELL-FORMATTED STORE MANAGER FEEDBACK RULES:
    - Binary PASS or FAIL logic.
    - NO soft filler, NO comforting phrasing ("Good try", "Almost there").
    - ON PASS ("pass": true):
      * If 100% complete with no omitted optional details: Set "feedback": "PASS. Recipe recalled correctly."
-     * If correct but omitted optional details (e.g. omitted Short size numbers): Set "feedback": "PASS. Recipe recalled correctly. Bonus Note: Short size for this drink takes [N] shots and [M] syrup pumps." (State the exact omitted detail tersely).
-   - ON FAIL ("pass": false): The "feedback" string MUST be clear, specific, and terse with 3 parts:
-     1. EXACT ERROR: State precisely what was wrong or missing (e.g., "FAIL: Incorrect shot count for Venti size" or "FAIL: Omitted milk pitcher size reduction").
-     2. WHAT WAS HEARD: State what trainee said for that step (e.g., "Heard: 'Shots 2 2 2'").
-     3. CORRECTION & FULL RECIPE: State exact fix (e.g., "Correction: Venti shots is 3"), then list complete correct recipe steps in order (1. Steam milk, 2. Queue shots, 3. Add syrup, 4. Finish & connect).
-   - In "transcribedSpeech", output clean, natural transcription of what you hear in the audio clip.
-   - Return ONLY valid JSON matching this exact structure:
-     {
-       "pass": boolean,
-       "isError": boolean,
-       "score": number,
-       "feedback": string,
-       "transcribedSpeech": string
-     }`;
+     * If correct but omitted optional details (e.g. omitted Short size numbers): Set "feedback": "PASS. Recipe recalled correctly.\n\n**Bonus Note:** Short size for this drink takes [N] shots and [M] syrup pumps."
+   - ON FAIL ("pass": false): Format the "feedback" string with structured Markdown using newlines, bold headers, and bulleted lists:
+     **FAIL: [Short Concise Error Summary]**
+
+     * **Heard:** "[Exact what trainee said]"
+     * **Correction:** [Exact correction for the mistake]
+
+     **Standard Recipe Steps:**
+     1. [Step 1: Steam milk]
+     2. [Step 2: Queue shots]
+     3. [Step 3: Add syrup]
+     4. [Step 4: Finish & connect]
+   - In "transcribedSpeech", output clean, natural transcription of what you hear in the audio clip.`;
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -90,7 +89,6 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-// Check if a model has been marked quota-exhausted today
 export function isModelExhausted(model: string): boolean {
   const dateStr = localStorage.getItem(`quota_exhausted_${model}`);
   if (!dateStr) return false;
@@ -127,10 +125,9 @@ export async function evaluateWithGemini(
   let currentModel = preferredModel;
   let rotationNote: string | undefined = undefined;
 
-  // Auto-check if preferred model is non-lite and exhausted today
   if (preferredModel !== 'gemini-3.5-flash-lite' && isModelExhausted(preferredModel)) {
     currentModel = 'gemini-3.5-flash-lite';
-    rotationNote = `Model ${preferredModel} has exceeded its daily API quota (20 RPD limit). Auto-rotated to Gemini 3.5 Flash-Lite (will auto-reset tomorrow).`;
+    rotationNote = `Model ${preferredModel} has exceeded its daily API quota (20 RPD limit). Auto-rotated to Gemini 3.5 Flash-Lite.`;
   }
 
   const cleanRecipePrompt = {
@@ -163,8 +160,20 @@ export async function evaluateWithGemini(
       parts.push({ text: promptText });
     }
 
+    // Official Gemini Structured Output Schema API Configuration
     const genConfig: any = {
-      response_mime_type: "application/json"
+      response_mime_type: "application/json",
+      responseSchema: {
+        type: "OBJECT",
+        properties: {
+          pass: { type: "BOOLEAN" },
+          isError: { type: "BOOLEAN" },
+          score: { type: "INTEGER" },
+          feedback: { type: "STRING" },
+          transcribedSpeech: { type: "STRING" }
+        },
+        required: ["pass", "score", "feedback", "transcribedSpeech"]
+      }
     };
 
     if (selectedThinking === 'LOW') {
@@ -211,15 +220,13 @@ export async function evaluateWithGemini(
         console.warn(`[Auto-Rotate] HTTP 429 hit for ${currentModel}. Initiating model rotation...`);
         
         if (currentModel !== 'gemini-3.5-flash-lite') {
-          // Non-lite model exhausted daily quota
           markModelExhausted(currentModel);
           currentModel = 'gemini-3.5-flash-lite';
           rotationNote = `Model ${preferredModel} exceeded daily API quota (20 RPD). Auto-rotated to Gemini 3.5 Flash-Lite (will reset tomorrow).`;
           resultPayload = await executeApiCall(currentModel);
         } else {
-          // 3.5-flash-lite temporary RPM rate limit spike -> Rotate temporarily to 3.5-flash or 3.6-flash
           const altModel = !isModelExhausted('gemini-3.5-flash') ? 'gemini-3.5-flash' : 'gemini-3.6-flash';
-          rotationNote = `Temporary rate limit encountered on Gemini 3.5 Flash-Lite. Auto-rotated temporarily to ${altModel} to maintain evaluation.`;
+          rotationNote = `Temporary rate limit encountered on Gemini 3.5 Flash-Lite. Auto-rotated temporarily to ${altModel}.`;
           resultPayload = await executeApiCall(altModel);
         }
       } else {
@@ -242,7 +249,6 @@ export async function evaluateWithGemini(
       parsed.rotatedModelNotification = rotationNote;
     }
 
-    // Save debug log for modal viewer
     lastEvaluationDebugLog = {
       timestamp: new Date().toLocaleTimeString(),
       systemPrompt: `MODEL USED: ${resultPayload.modelUsed} | THINKING: ${selectedThinking}\n\n${SYSTEM_PROMPT}`,

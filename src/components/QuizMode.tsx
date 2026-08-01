@@ -75,6 +75,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           if (result.isError) {
             speakTextWeb("No speech audio detected.", 1.10);
           } else if (result.pass) {
+            // On PASS: Web Speech speaks "Pass!"
             speakTextWeb("Pass!", 1.10);
 
             if (autoAdvanceMode === 'handsfree') {
@@ -83,7 +84,11 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
               }, 1200);
             }
           } else {
-            speakTextGemini(result.feedback, apiKey, 1.10);
+            // On FAIL: Instant Web Speech "Fail!", THEN Gemini TTS reads Store Manager feedback
+            speakTextWeb("Fail!", 1.10);
+            setTimeout(() => {
+              speakTextGemini(result.feedback, apiKey, 1.10);
+            }, 900);
           }
 
         } catch (e) {
@@ -495,10 +500,10 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           </div>
 
           <div>
-            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <MessageSquare size={14} /> STORE MANAGER FEEDBACK
             </div>
-            <div style={{ fontSize: '0.95rem', color: '#FFF', lineHeight: '1.5', fontWeight: 500 }}>
+            <div style={{ fontSize: '0.95rem', color: '#FFF', lineHeight: '1.6', fontWeight: 500, whiteSpace: 'pre-wrap' }}>
               {evaluation.feedback}
             </div>
           </div>
