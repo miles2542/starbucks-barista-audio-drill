@@ -148,6 +148,7 @@ export class AudioListener {
     private mediaStream: MediaStream | null = null;
     private audioChunks: Blob[] = [];
     private silenceTimer: number | null = null;
+    private triggerValidationTimer: number | null = null;
     private onFinalResultCallback: ((text: string, audioBlob?: Blob) => void) | null = null;
     private onInterimResultCallback: ((text: string) => void) | null = null;
     private onVolumeCallback: ((volume: number) => void) | null = null;
@@ -187,16 +188,28 @@ export class AudioListener {
                     this.onInterimResultCallback(fullTranscript);
                 }
 
-                // Robust multi-trigger word matching for "Over" (handles English & Vietnamese ASR phonetic variations + trailing punctuation)
-                const triggerRegex = /(?:^|\s)(over|ô vơ|ơ vơ|ơi|hết|done|finish|check|xong|over\.|hết\.)[\s.,!?]*$/i;
+                // Explicit end command phrase matching at the trailing end of speech
+                const endTriggerRegex = /(?:^|\s)(over|ô vơ|ơ vơ|xong rồi|over mark|over store)[\s.,!?]*$/i;
                 
-                if (triggerRegex.test(fullTranscript) || triggerRegex.test(interimTranscript) || triggerRegex.test(finalTranscript)) {
-                    let cleanText = fullTranscript.replace(triggerRegex, '').trim();
-                    this.currentTranscript = cleanText.length > 0 ? cleanText : fullTranscript;
-                    console.log('[AudioListener] Over trigger detected. Auto-ending recording...');
-                    this.stopManual();
-                } else if (finalTranscript) {
-                    this.currentTranscript = (this.currentTranscript + ' ' + finalTranscript).trim();
+                if (endTriggerRegex.test(fullTranscript)) {
+                    // Cancel any previous validation timer
+                    this.clearTriggerValidationTimer();
+
+                    // 600ms Validation Buffer: Only stop if no new words arrive within 600ms!
+                    // If trainee keeps speaking mid-sentence, new words will arrive and cancel this timer.
+                    this.triggerValidationTimer = window.setTimeout(() => {
+                        let cleanText = fullTranscript.replace(endTriggerRegex, '').trim();
+                        this.currentTranscript = cleanText.length > 0 ? cleanText : fullTranscript;
+                        console.log('[AudioListener] Confirmed end trigger at tail end of speech. Submitting recording...');
+                        this.stopManual();
+                    }, 600);
+
+                } else {
+                    // New words arrived after trigger word -> it was spoken mid-sentence! Cancel validation timer.
+                    this.clearTriggerValidationTimer();
+                    if (finalTranscript) {
+                        this.currentTranscript = (this.currentTranscript + ' ' + finalTranscript).trim();
+                    }
                 }
             };
 
@@ -207,6 +220,13 @@ export class AudioListener {
                     } catch (e) {}
                 }
             };
+        }
+    }
+
+    private clearTriggerValidationTimer() {
+        if (this.triggerValidationTimer !== null) {
+            window.clearTimeout(this.triggerValidationTimer);
+            this.triggerValidationTimer = null;
         }
     }
 
@@ -285,17 +305,20 @@ export class AudioListener {
 
     public cancel() {
         this.onFinalResultCallback = null;
+        this.clearTriggerValidationTimer();
         this.stop();
         this.cleanupStream();
     }
 
     public stopManual() {
+        this.clearTriggerValidationTimer();
         this.flushAudioRecorderAndSubmit();
     }
 
     public stop() {
         this.isListening = false;
         this.clearSilenceTimer();
+        this.clearTriggerValidationTimer();
         this.stopAudioAnalyzer();
         
         if (this.recognition) {
