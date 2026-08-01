@@ -12,12 +12,12 @@ import './App.css';
 function App() {
   const [activeTab, setActiveTab] = useState('quiz');
   const [recipes, setRecipes] = useState<Recipe[]>(() => {
-    const saved = localStorage.getItem('starbucks_recipes_v2');
+    const saved = localStorage.getItem('starbucks_recipes_v3');
     if (!saved) return initialRecipes as Recipe[];
     try {
       const parsed = JSON.parse(saved);
-      // Auto-migrate if old legacy placeholder recipes (latte / caramel_macchiato)
-      if (Array.isArray(parsed) && parsed.some(r => r.id === 'latte' || r.id === 'caramel_macchiato')) {
+      // Auto-migrate if missing new mocha recipes
+      if (Array.isArray(parsed) && !parsed.some(r => r.id === 'hot-mocha')) {
         return initialRecipes as Recipe[];
       }
       return parsed;
@@ -29,7 +29,7 @@ function App() {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(recipes[0] || null);
 
   useEffect(() => {
-    localStorage.setItem('starbucks_recipes_v2', JSON.stringify(recipes));
+    localStorage.setItem('starbucks_recipes_v3', JSON.stringify(recipes));
   }, [recipes]);
 
   const dueCount = SRSEngine.getDueItems(recipes).length;
@@ -41,9 +41,12 @@ function App() {
 
   const handleResetRecipes = () => {
     setRecipes(initialRecipes as Recipe[]);
-    localStorage.setItem('starbucks_recipes_v2', JSON.stringify(initialRecipes));
+    localStorage.setItem('starbucks_recipes_v3', JSON.stringify(initialRecipes));
     setSelectedRecipe((initialRecipes as Recipe[])[0]);
   };
+
+  const versionText = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.2.1';
+  const commitText = typeof __GIT_COMMIT_HASH__ !== 'undefined' ? __GIT_COMMIT_HASH__ : 'dev';
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)' }}>
@@ -55,6 +58,18 @@ function App() {
         {activeTab === 'recipes' && <RecipeManager recipes={recipes} setRecipes={setRecipes} onSelect={handleSelectRecipe} onReset={handleResetRecipes} />}
         {activeTab === 'settings' && <SettingsModal onResetRecipes={handleResetRecipes} />}
       </main>
+
+      <footer style={{
+        textAlign: 'center',
+        padding: '0.85rem 1rem',
+        fontSize: '0.75rem',
+        color: 'var(--text-muted)',
+        borderTop: '1px solid var(--border-subtle)',
+        background: 'var(--bg-surface)',
+        fontFamily: 'monospace'
+      }}>
+        Starbucks Recipe SRS v{versionText} ({commitText})
+      </footer>
     </div>
   );
 }

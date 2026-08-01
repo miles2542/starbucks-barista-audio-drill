@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { SRSEngine } from '../services/srsEngine';
-import { Key, QrCode, Download, Upload, RotateCcw, ExternalLink } from 'lucide-react';
+import { Key, QrCode, Download, Upload, RotateCcw, ExternalLink, Cpu, Brain } from 'lucide-react';
 
 interface SettingsModalProps {
   onResetRecipes?: () => void;
@@ -9,11 +9,20 @@ interface SettingsModalProps {
 
 export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
+  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('gemini_grader_model') || 'gemini-3.5-flash-lite');
+  const [thinkingLevel, setThinkingLevel] = useState(() => localStorage.getItem('gemini_thinking_level') || 'HIGH');
   const [syncString, setSyncString] = useState('');
   
   const handleSaveKey = () => {
     localStorage.setItem('gemini_api_key', apiKey.trim());
     alert(apiKey.trim() ? 'Gemini API key saved successfully!' : 'API key cleared.');
+  };
+
+  const handleSaveModelConfig = (model: string, thinking: string) => {
+    setSelectedModel(model);
+    setThinkingLevel(thinking);
+    localStorage.setItem('gemini_grader_model', model);
+    localStorage.setItem('gemini_thinking_level', thinking);
   };
 
   const handleExport = () => {
@@ -36,10 +45,10 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div>
         <h1 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, color: '#FFF' }}>
-          Settings & Cross-Device Sync
+          Settings & Model Configuration
         </h1>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-          Configure AI API keys, TTS voice preferences, and sync SRS progress.
+          Configure AI API keys, Store Manager model selection, reasoning thinking levels, and cross-device sync.
         </p>
       </div>
 
@@ -94,12 +103,126 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
         </div>
       </div>
 
+      {/* AI Model & Thinking Level Selector */}
+      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Cpu size={18} /> Store Manager Grader Model
+          </h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+            Select the Gemini model for strict recipe evaluation and multimodal audio transcription.
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <button
+            onClick={() => handleSaveModelConfig('gemini-3.5-flash-lite', thinkingLevel)}
+            style={{
+              padding: '0.85rem 1rem',
+              borderRadius: '8px',
+              border: selectedModel === 'gemini-3.5-flash-lite' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
+              background: selectedModel === 'gemini-3.5-flash-lite' ? 'rgba(5, 150, 105, 0.12)' : 'var(--bg-primary)',
+              color: '#FFF',
+              textAlign: 'left',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
+            }}
+          >
+            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: selectedModel === 'gemini-3.5-flash-lite' ? 'var(--accent-mint)' : '#FFF' }}>
+              Gemini 3.5 Flash-Lite (Default)
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Sub-second latency (~5.3s on real audio), lightweight & highly responsive.
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleSaveModelConfig('gemini-3.6-flash', thinkingLevel)}
+            style={{
+              padding: '0.85rem 1rem',
+              borderRadius: '8px',
+              border: selectedModel === 'gemini-3.6-flash' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
+              background: selectedModel === 'gemini-3.6-flash' ? 'rgba(5, 150, 105, 0.12)' : 'var(--bg-primary)',
+              color: '#FFF',
+              textAlign: 'left',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
+            }}
+          >
+            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: selectedModel === 'gemini-3.6-flash' ? 'var(--accent-mint)' : '#FFF' }}>
+              Gemini 3.6 Flash (Deep Adaptive)
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              100% verbatim audio transcription, handles complex self-correction & edge cases.
+            </div>
+          </button>
+        </div>
+
+        {/* Dynamic Thinking Level Selector (Shared across models) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+          <label style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Brain size={16} style={{ color: 'var(--accent-mint)' }} /> Thinking Level / Reasoning Budget ({selectedModel})
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+            <button
+              onClick={() => handleSaveModelConfig(selectedModel, 'OFF')}
+              style={{
+                padding: '0.65rem 0.75rem',
+                borderRadius: '6px',
+                border: thinkingLevel === 'OFF' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
+                background: thinkingLevel === 'OFF' ? 'rgba(5, 150, 105, 0.15)' : 'var(--bg-primary)',
+                color: thinkingLevel === 'OFF' ? '#FFF' : 'var(--text-muted)',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer'
+              }}
+            >
+              Off (Fastest)
+            </button>
+            <button
+              onClick={() => handleSaveModelConfig(selectedModel, 'LOW')}
+              style={{
+                padding: '0.65rem 0.75rem',
+                borderRadius: '6px',
+                border: thinkingLevel === 'LOW' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
+                background: thinkingLevel === 'LOW' ? 'rgba(5, 150, 105, 0.15)' : 'var(--bg-primary)',
+                color: thinkingLevel === 'LOW' ? '#FFF' : 'var(--text-muted)',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer'
+              }}
+            >
+              Low (Budget 1024)
+            </button>
+            <button
+              onClick={() => handleSaveModelConfig(selectedModel, 'HIGH')}
+              style={{
+                padding: '0.65rem 0.75rem',
+                borderRadius: '6px',
+                border: thinkingLevel === 'HIGH' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
+                background: thinkingLevel === 'HIGH' ? 'rgba(5, 150, 105, 0.15)' : 'var(--bg-primary)',
+                color: thinkingLevel === 'HIGH' ? '#FFF' : 'var(--text-muted)',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer'
+              }}
+            >
+              High (Budget 4096)
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Reset Recipe Dataset */}
       {onResetRecipes && (
         <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#FFF' }}>Reset Recipes to Standard 6</div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Overwrites local recipe state with standard 6 Starbucks training recipes.</div>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#FFF' }}>Reset Recipes to Default Dataset</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Overwrites local recipe state with standard 8 Starbucks training recipes.</div>
           </div>
           <button
             onClick={onResetRecipes}

@@ -29,7 +29,7 @@
     "code": "C (HOT)",
     "type": "hot",
     "steps": {
-      "steamMilk": "Steam milk: 6-8s (giảm size - trừ nếu gọi size Tall thì vẫn giữ nguyên lượng sữa cho size Tall)",
+      "steamMilk": "Steam milk: 6-8s (phải giảm 1 size pitcher sữa khi rót - trừ size Tall thì giữ nguyên)",
       "queueShots": "Queue shots: 1 2 2 3 (thẳng vào cốc)",
       "pumpSyrup": "Add syrups: 1 2 3 4, only if requested",
       "finish": "Finish & Connect: Đổ sữa đến dưới miệng cốc 6mm"
@@ -44,7 +44,7 @@
       "steamMilk": "Steam milk: Tall size 6-8s (mọi size đều steam milk ở mức Tall)",
       "queueShots": "Queue shots: 2 2 3 (vào shot glass)",
       "pumpSyrup": "Add syrup: 2 3 4, only if requested",
-      "finish": "Finish & Connect: Đổ sữa dưới vạch giữa 6mm -> Đổ shots -> Đổ đá đến top logo -> Đổ đá dưới miệng cốc 6mm"
+      "finish": "Finish & Connect: Đổ sữa dưới vạch giữa 6mm -> Đổ shots -> Đổ đá đến top logo -> Đổ foam dưới miệng cốc 6mm"
     }
   },
   {
@@ -69,6 +69,30 @@
       "queueShots": "Queue shots: 2 3 4 (vào shot glass)",
       "pumpSyrup": "Add syrup: 3 4 5, only if requested",
       "finish": "Finish & Connect: Đổ nước lọc (thường) dưới vạch cao nhất 6mm -> Đổ shots -> Đổ đá dưới miệng cốc 6mm"
+    }
+  },
+  {
+    "id": "hot-mocha",
+    "name": "Hot Mocha (M)",
+    "code": "M (HOT)",
+    "type": "hot",
+    "steps": {
+      "steamMilk": "Steam milk: 1-3s",
+      "queueShots": "Queue shots: 1 2 2 3 (thẳng vào cốc)",
+      "pumpSyrup": "Add syrup: Mocha Sauce 2 3 4 5 (mặc định áp dụng)",
+      "finish": "Finish & Connect: 1. Khuấy đều espresso shots với mocha sauce -> 2. Rót sữa đến dưới miệng cốc 12mm (không rót foam) -> 3. Phủ whipped cream trên cùng"
+    }
+  },
+  {
+    "id": "iced-mocha",
+    "name": "Iced Mocha (M)",
+    "code": "M (ICED)",
+    "type": "iced",
+    "steps": {
+      "steamMilk": "None (No steaming)",
+      "queueShots": "Queue shots: 2 2 3 (vào shot glass)",
+      "pumpSyrup": "Add syrup: Mocha Sauce 3 4 5 (mặc định áp dụng)",
+      "finish": "Finish & Connect: 1. Khuấy đều espresso shots với mocha sauce -> 2. Rót sữa đến vạch trên cùng (top line) -> 3. Thêm đá cách miệng cốc 6mm -> 4. Phủ whipped cream lên trên (Khuyên dùng dome cap/nắp cầu)"
     }
   }
 ]

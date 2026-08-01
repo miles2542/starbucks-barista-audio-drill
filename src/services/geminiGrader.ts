@@ -35,24 +35,25 @@ CRITICAL STARBUCKS RECIPE CONTEXT & EVALUATION RULES:
    - Trainee recites recipes by mixing English barista terms ("Hot Latte", "steam milk", "queue shot", "latte art") with Vietnamese words ("đầu tiên sẽ là", "rót sữa", "vạch cao nhất").
    - ASR PHONETIC RECOGNITION: Recognize English terms spoken with Vietnamese accent or phonetically transliterated:
      * "hạt lờ tề" / "lờ tề" = Hot Latte / Latte
+     * "hạt mocha" / "lờ mocha" = Hot Mocha / Mocha
      * "dieu tien" / "điều tiên" = đầu tiên
      * "kem" / "đá" / "phum" / "xirô" = syrup / ice / pumps
-   - In "transcribedSpeech", transcribe into clean, natural Vietnamese + English terms (e.g. write "Hot Latte đầu tiên..." rather than literal phonetic artifacts like "Hạt lờ tề...").
-2. MARK CUP CODES: The single-letter code in parentheses like "(L)", "(C)", or "(A)" is the MARK CUP CODE!
-   - (L) = Caffe Latte
-   - (C) = Cappuccino
-   - (A) = Caffe Americano
-   NEVER refer to "(L)" as "Large"! "L" means Latte.
-3. 3-NUMBER SHORT OMISSION RULE (CRITICAL - DO NOT FAIL FOR THIS):
-   - Starbucks core recipes list 4 numbers: [Short | Tall | Grande | Venti].
-   - Trainees usually omit Short size and recite ONLY 3 numbers for [Tall | Grande | Venti].
-   - EXAMPLES OF 100% PASSING ANSWERS:
-     * If target Shots is "1 2 2 3" (Short 1, Tall 2, Grande 2, Venti 3) and trainee recites "2 2 3" (for Tall, Grande, Venti), THIS IS 100% CORRECT PASS!
-     * If target Syrup is "2 3 4 5" (Short 2, Tall 3, Grande 4, Venti 5) and trainee recites "3 4 5" (for Tall, Grande, Venti), THIS IS 100% CORRECT PASS!
-   - DO NOT REQUIRE SHORT SIZE NUMBERS! If Tall, Grande, Venti numbers match, set "pass": true!
+   - In "transcribedSpeech", transcribe into clean, natural Vietnamese + English terms.
+
+2. STRICT MANDATORY RECIPE REQUIREMENTS (MUST FAIL IF OMITTED):
+   - Hot Cappuccino (C): Trainee MUST explicitly mention reducing milk pitcher size by 1 size ("giảm size pitcher" / "giảm lượng sữa 1 size" unless size is Tall). If omitted, set "pass": false!
+   - Iced Cappuccino (C): Foam MUST be under 6mm from rim ("foam dưới 6mm / cách 6mm"), NOT ice!
+   - Hot Mocha (M): MUST stir espresso with mocha sauce, milk to 12mm below rim (NO FOAM), top with whipped cream.
+   - Iced Mocha (M): MUST stir espresso with mocha sauce, milk to top line, ice to 6mm below rim, top with whipped cream (dome cap recommended).
+
+3. ADAPTIVE FLEXIBILITY & SELF-CORRECTION (MUST PASS IF SELF-CORRECTED):
+   - SELF-CORRECTION RULE: If trainee accidentally recites step B before step A, but immediately self-corrects ("thực ra phải làm step A trước rồi mới làm step B"), treat this as 100% CORRECT PASS!
+   - 3-NUMBER SHORT OMISSION RULE: Starbucks core recipes list 4 numbers [Short | Tall | Grande | Venti]. Trainees usually omit Short size and recite ONLY 3 numbers for [Tall | Grande | Venti] (e.g. Shots "2 2 3" or Syrup "3 4 5"). This is 100% CORRECT PASS! Do NOT require Short size!
+
 4. NO SPEECH DETECTED / SYSTEM ERROR HANDLING:
    - If the audio clip is silent, empty, or contains no audible voice, set "isError": true, "pass": false, "score": 0, and "feedback": "No speech audio detected. Please check microphone and speak clearly into the mic."
-5. EVALUATION & FULL REINFORCEMENT RULES:
+
+5. EVALUATION & REINFORCEMENT RULES:
    - Binary PASS or FAIL logic.
    - NO soft filler, NO comforting phrasing ("Good try", "Almost there").
    - ON PASS: "feedback" string should simply be "PASS. Recipe recalled correctly."
@@ -91,6 +92,9 @@ export async function evaluateWithGemini(
     return fallbackGrader(recipe, actions, audioBlobUrl);
   }
 
+  const selectedModel = localStorage.getItem('gemini_grader_model') || 'gemini-3.5-flash-lite';
+  const selectedThinking = localStorage.getItem('gemini_thinking_level') || 'HIGH';
+
   const cleanRecipePrompt = {
     drinkName: recipe.drinkName,
     temperature: recipe.temperature,
@@ -100,7 +104,7 @@ export async function evaluateWithGemini(
   const promptText = `Target Recipe: ${JSON.stringify(cleanRecipePrompt, null, 2)}\nTrainee Recalled Steps Text: ${JSON.stringify(actions, null, 2)}\nEvaluate execution against standard Starbucks recipe rules.`;
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
 
     const parts: any[] = [];
 
@@ -116,10 +120,20 @@ export async function evaluateWithGemini(
         }
       });
       parts.push({
-        text: `Listen to the attached audio clip above of the trainee reciting the recipe in Vietnamese or English. 1) Transcribe what you hear into clean natural Vietnamese + English terms in "transcribedSpeech". 2) Evaluate against target recipe (omitting Short size numbers is 100% PASS). If audio is silent/inaudible set "isError": true:\n${promptText}`
+        text: `Listen to the attached audio clip above of the trainee reciting the recipe in Vietnamese or English. 1) Transcribe what you hear into clean natural Vietnamese + English terms in "transcribedSpeech". 2) Evaluate against target recipe strictly. If audio is silent/inaudible set "isError": true:\n${promptText}`
       });
     } else {
       parts.push({ text: promptText });
+    }
+
+    const genConfig: any = {
+      response_mime_type: "application/json"
+    };
+
+    if (selectedThinking === 'LOW') {
+      genConfig.thinkingConfig = { thinkingBudget: 1024 };
+    } else if (selectedThinking === 'HIGH') {
+      genConfig.thinkingConfig = { thinkingBudget: 4096 };
     }
 
     const response = await fetch(url, {
@@ -134,14 +148,12 @@ export async function evaluateWithGemini(
         contents: [{
           parts: parts
         }],
-        generationConfig: {
-          response_mime_type: "application/json"
-        }
+        generationConfig: genConfig
       })
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
+      throw new Error(`API Error (${selectedModel}): ${response.statusText}`);
     }
 
     const data = await response.json();
@@ -160,7 +172,7 @@ export async function evaluateWithGemini(
     // Save debug log for modal viewer
     lastEvaluationDebugLog = {
       timestamp: new Date().toLocaleTimeString(),
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: `MODEL: ${selectedModel} | THINKING: ${selectedThinking}\n\n${SYSTEM_PROMPT}`,
       requestPrompt: promptText,
       rawResponseText: rawText,
       parsedResult: parsed,
@@ -179,7 +191,7 @@ export async function evaluateWithGemini(
     };
     lastEvaluationDebugLog = {
       timestamp: new Date().toLocaleTimeString(),
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: `MODEL: ${selectedModel} | THINKING: ${selectedThinking}\n\n${SYSTEM_PROMPT}`,
       requestPrompt: promptText,
       rawResponseText: `API Error: ${error?.message || error}`,
       parsedResult: errRes,
