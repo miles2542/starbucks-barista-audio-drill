@@ -114,11 +114,11 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
           <button
             onClick={() => handleSaveModelConfig('gemini-3.5-flash-lite', thinkingLevel)}
             style={{
-              padding: '0.85rem 1rem',
+              padding: '0.75rem',
               borderRadius: '8px',
               border: selectedModel === 'gemini-3.5-flash-lite' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
               background: selectedModel === 'gemini-3.5-flash-lite' ? 'rgba(5, 150, 105, 0.12)' : 'var(--bg-primary)',
@@ -130,18 +130,41 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               gap: '4px'
             }}
           >
-            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: selectedModel === 'gemini-3.5-flash-lite' ? 'var(--accent-mint)' : '#FFF' }}>
-              Gemini 3.5 Flash-Lite (Default)
+            <div style={{ fontWeight: 800, fontSize: '0.85rem', color: selectedModel === 'gemini-3.5-flash-lite' ? 'var(--accent-mint)' : '#FFF' }}>
+              3.5 Flash-Lite (Default)
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Sub-second latency (~5.3s on real audio), lightweight & highly responsive.
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              Lightweight & standard (~4.7s).
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleSaveModelConfig('gemini-3.5-flash', thinkingLevel)}
+            style={{
+              padding: '0.75rem',
+              borderRadius: '8px',
+              border: selectedModel === 'gemini-3.5-flash' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
+              background: selectedModel === 'gemini-3.5-flash' ? 'rgba(5, 150, 105, 0.12)' : 'var(--bg-primary)',
+              color: '#FFF',
+              textAlign: 'left',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
+            }}
+          >
+            <div style={{ fontWeight: 800, fontSize: '0.85rem', color: selectedModel === 'gemini-3.5-flash' ? 'var(--accent-mint)' : '#FFF' }}>
+              3.5 Flash (Fastest 3.3s)
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              Ultra-fast audio processing & high speed.
             </div>
           </button>
 
           <button
             onClick={() => handleSaveModelConfig('gemini-3.6-flash', thinkingLevel)}
             style={{
-              padding: '0.85rem 1rem',
+              padding: '0.75rem',
               borderRadius: '8px',
               border: selectedModel === 'gemini-3.6-flash' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
               background: selectedModel === 'gemini-3.6-flash' ? 'rgba(5, 150, 105, 0.12)' : 'var(--bg-primary)',
@@ -153,16 +176,16 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               gap: '4px'
             }}
           >
-            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: selectedModel === 'gemini-3.6-flash' ? 'var(--accent-mint)' : '#FFF' }}>
-              Gemini 3.6 Flash (Deep Adaptive)
+            <div style={{ fontWeight: 800, fontSize: '0.85rem', color: selectedModel === 'gemini-3.6-flash' ? 'var(--accent-mint)' : '#FFF' }}>
+              3.6 Flash (Deepest)
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              100% verbatim audio transcription, handles complex self-correction & edge cases.
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              100% verbatim audio & self-correction.
             </div>
           </button>
         </div>
 
-        {/* Dynamic Thinking Level Selector (Shared across models) */}
+        {/* Dynamic Thinking Level Selector */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
           <label style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Brain size={16} style={{ color: 'var(--accent-mint)' }} /> Thinking Level / Reasoning Budget ({selectedModel})
