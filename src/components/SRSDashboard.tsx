@@ -7,145 +7,111 @@ interface SRSDashboardProps {
   recipes: Recipe[];
 }
 
-interface DrinkGroupMetrics {
-  groupKey: string;
+interface RecipeItemMetrics {
+  recipe: Recipe;
   displayName: string;
   code: string;
-  recipes: Recipe[];
+  type: 'hot' | 'iced';
   totalCorrect: number;
   totalIncorrect: number;
   totalReviews: number;
   passRate: number;            // 0 - 100%
-  avgWeight: number;           // Average selection weight
+  weight: number;              // Individual selection weight
   confidenceScore: number;     // 0 - 100% calculated confidence rating
   masteryStatus: 'Mastered' | 'Learning' | 'Needs Practice';
   lastTimestamp?: number;
   avgSpeedMs?: number;
+  groupBaseKey: string;        // Base key to group hot & iced variations side-by-side
 }
 
 export function SRSDashboard({ recipes }: SRSDashboardProps) {
   const [filterStatus, setFilterStatus] = useState<'all' | 'mastered' | 'learning' | 'practice'>('all');
-  const [sortBy, setSortBy] = useState<'weight-desc' | 'confidence-asc' | 'reviews-desc' | 'name-asc'>('weight-desc');
+  const [sortBy, setSortBy] = useState<'grouped' | 'weight-desc' | 'confidence-asc' | 'reviews-desc' | 'name-asc'>('grouped');
 
   const srsData = SRSEngine.loadAll();
 
-  // Helper to group hot & iced drink variations into a single row
-  const groupRecipes = (): DrinkGroupMetrics[] => {
-    const groupsMap: Record<string, Recipe[]> = {};
+  // Map every individual recipe to its own distinct SRS metrics item
+  const getItemMetrics = (): RecipeItemMetrics[] => {
+    return recipes.map(r => {
+      const data: WeightData = srsData[r.id] || {
+        id: r.id,
+        weight: 100,
+        correctCount: 0,
+        incorrectCount: 0,
+        turnsSinceLastGraded: 0
+      };
 
-    recipes.forEach(r => {
-      // Group key: strip "Hot" / "Iced" prefixes and "(HOT)" / "(ICED)" codes
-      let baseName = r.name.replace(/^(Hot|Iced)\s+/i, '');
-      if (baseName.includes('(')) {
-        baseName = baseName.split('(')[0].trim();
-      }
-
-      const key = baseName.toLowerCase();
-      if (!groupsMap[key]) {
-        groupsMap[key] = [];
-      }
-      groupsMap[key].push(r);
-    });
-
-    return Object.entries(groupsMap).map(([key, groupRecipes]) => {
-      let totalCorrect = 0;
-      let totalIncorrect = 0;
-      let totalWeightSum = 0;
-      let latestTimestamp = 0;
-      let totalSpeedSum = 0;
-      let speedCount = 0;
-
-      groupRecipes.forEach(r => {
-        const data: WeightData = srsData[r.id] || {
-          id: r.id,
-          weight: 100,
-          correctCount: 0,
-          incorrectCount: 0,
-          turnsSinceLastGraded: 0
-        };
-
-        totalCorrect += data.correctCount || 0;
-        totalIncorrect += data.incorrectCount || 0;
-        totalWeightSum += data.weight || 100;
-
-        if (data.lastGradedTimestamp && data.lastGradedTimestamp > latestTimestamp) {
-          latestTimestamp = data.lastGradedTimestamp;
-        }
-
-        if (data.lastSpeedMs) {
-          totalSpeedSum += data.lastSpeedMs;
-          speedCount += 1;
-        }
-      });
-
-      const avgWeight = totalWeightSum / groupRecipes.length;
+      const totalCorrect = data.correctCount || 0;
+      const totalIncorrect = data.incorrectCount || 0;
       const totalReviews = totalCorrect + totalIncorrect;
       const passRate = totalReviews > 0 ? Math.round((totalCorrect / totalReviews) * 100) : 0;
+      const weight = data.weight || 100;
 
-      // Confidence Score % formula: 100% - normalized weight penalty + pass rate bonus
-      // Weight ranges from 10 (Mastered) to 250 (Needs Practice)
-      const weightPenalty = Math.min(100, Math.max(0, ((avgWeight - 10) / 240) * 100));
+      // Confidence Score % formula based on SM-2 weight range (10 to 250)
+      const weightPenalty = Math.min(100, Math.max(0, ((weight - 10) / 240) * 100));
       let confidenceScore = Math.round(100 - weightPenalty);
-      if (totalReviews === 0) confidenceScore = 50; // Neutral starting score
+      if (totalReviews === 0) confidenceScore = 50;
 
       let masteryStatus: 'Mastered' | 'Learning' | 'Needs Practice' = 'Learning';
-      if (avgWeight <= 35 && totalReviews >= 2) {
+      if (weight <= 35 && totalReviews >= 2) {
         masteryStatus = 'Mastered';
-      } else if (avgWeight >= 110 || passRate < 60) {
+      } else if (weight >= 110 || (totalReviews > 0 && passRate < 60)) {
         masteryStatus = 'Needs Practice';
       }
 
-      // Display name and mark cup code
-      const firstRecipe = groupRecipes[0];
-      let codeStr = firstRecipe.code || '';
-      if (codeStr.includes('(')) {
-        codeStr = codeStr.split('(')[0].trim();
-      }
-
-      const displayName = `${firstRecipe.name.replace(/^(Hot|Iced)\s+/i, '').split('(')[0].trim()} (${codeStr})`;
+      // Base key for visual side-by-side grouping (e.g. "latte", "cappuccino", "macchiato")
+      let baseKey = r.name.replace(/^(Hot|Iced)\s+/i, '').split('(')[0].trim().toLowerCase();
 
       return {
-        groupKey: key,
-        displayName: displayName,
-        code: codeStr,
-        recipes: groupRecipes,
+        recipe: r,
+        displayName: r.name,
+        code: r.code || '',
+        type: r.type,
         totalCorrect,
         totalIncorrect,
         totalReviews,
         passRate,
-        avgWeight,
+        weight,
         confidenceScore,
         masteryStatus,
-        lastTimestamp: latestTimestamp || undefined,
-        avgSpeedMs: speedCount > 0 ? Math.round(totalSpeedSum / speedCount) : undefined
+        lastTimestamp: data.lastGradedTimestamp || undefined,
+        avgSpeedMs: data.lastSpeedMs || undefined,
+        groupBaseKey: baseKey
       };
     });
   };
 
-  const groups = groupRecipes();
+  const items = getItemMetrics();
 
-  // Filter & Sort
-  const filteredGroups = groups.filter(g => {
+  // Filter
+  const filteredItems = items.filter(g => {
     if (filterStatus === 'mastered') return g.masteryStatus === 'Mastered';
     if (filterStatus === 'learning') return g.masteryStatus === 'Learning';
     if (filterStatus === 'practice') return g.masteryStatus === 'Needs Practice';
     return true;
   });
 
-  filteredGroups.sort((a, b) => {
-    if (sortBy === 'weight-desc') return b.avgWeight - a.avgWeight;
+  // Sort
+  filteredItems.sort((a, b) => {
+    if (sortBy === 'grouped') {
+      // Group related hot & iced recipes side-by-side, hot first then iced
+      const groupComp = a.groupBaseKey.localeCompare(b.groupBaseKey);
+      if (groupComp !== 0) return groupComp;
+      return a.type === 'hot' ? -1 : 1;
+    }
+    if (sortBy === 'weight-desc') return b.weight - a.weight;
     if (sortBy === 'confidence-asc') return a.confidenceScore - b.confidenceScore;
     if (sortBy === 'reviews-desc') return b.totalReviews - a.totalReviews;
     if (sortBy === 'name-asc') return a.displayName.localeCompare(b.displayName);
     return 0;
   });
 
-  // Global Statistics
-  const totalMastered = groups.filter(g => g.masteryStatus === 'Mastered').length;
-  const globalReviews = groups.reduce((acc, g) => acc + g.totalReviews, 0);
-  const globalCorrect = groups.reduce((acc, g) => acc + g.totalCorrect, 0);
+  // Global Overview Statistics
+  const totalMastered = items.filter(g => g.masteryStatus === 'Mastered').length;
+  const globalReviews = items.reduce((acc, g) => acc + g.totalReviews, 0);
+  const globalCorrect = items.reduce((acc, g) => acc + g.totalCorrect, 0);
   const globalAccuracy = globalReviews > 0 ? Math.round((globalCorrect / globalReviews) * 100) : 0;
-  const globalConfidence = Math.round(groups.reduce((acc, g) => acc + g.confidenceScore, 0) / (groups.length || 1));
+  const globalConfidence = Math.round(items.reduce((acc, g) => acc + g.confidenceScore, 0) / (items.length || 1));
 
   const formatRelativeTime = (ts?: number) => {
     if (!ts) return 'Not drilled yet';
@@ -165,7 +131,7 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
           SRS MEMORY METRICS & ANALYTICS
         </span>
         <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '4px 0 0 0', color: '#FFF' }}>
-          Recipe Mastery Dashboard
+          Recipe SRS Dashboard
         </h1>
       </div>
 
@@ -178,10 +144,10 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
             <Award size={14} style={{ color: 'var(--accent-mint)' }} /> MASTERED
           </div>
           <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#FFF' }}>
-            {totalMastered} / {groups.length}
+            {totalMastered} / {items.length}
           </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--accent-mint)' }}>
-            {Math.round((totalMastered / (groups.length || 1)) * 100)}% Drink Groups
+            {Math.round((totalMastered / (items.length || 1)) * 100)}% Recipes Mastered
           </div>
         </div>
 
@@ -194,7 +160,7 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
             {globalConfidence}%
           </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-            SuperMemo SRS Engine
+            SuperMemo SM-2 Score
           </div>
         </div>
 
@@ -244,7 +210,7 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
               cursor: 'pointer'
             }}
           >
-            All ({groups.length})
+            All ({items.length})
           </button>
           <button
             onClick={() => setFilterStatus('mastered')}
@@ -274,7 +240,7 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
               cursor: 'pointer'
             }}
           >
-            Needs Practice ({groups.filter(g => g.masteryStatus === 'Needs Practice').length})
+            Needs Practice ({items.filter(g => g.masteryStatus === 'Needs Practice').length})
           </button>
         </div>
 
@@ -295,23 +261,24 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
               cursor: 'pointer'
             }}
           >
+            <option value="grouped">Sort: Cohesive Drink Grouping (Hot/Iced Adjacent)</option>
             <option value="weight-desc">Sort: Priority Weight (High to Low)</option>
             <option value="confidence-asc">Sort: Confidence (Lowest First)</option>
             <option value="reviews-desc">Sort: Most Practiced</option>
-            <option value="name-asc">Sort: Drink Name (A-Z)</option>
+            <option value="name-asc">Sort: Recipe Name (A-Z)</option>
           </select>
         </div>
 
       </div>
 
-      {/* Grouped Drink SRS Table */}
+      {/* Individual Recipe SRS Table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
             <thead>
               <tr style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <th style={{ padding: '0.85rem 1rem' }}>Drink Recipe</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Variations</th>
+                <th style={{ padding: '0.85rem 1rem' }}>Recipe Name</th>
+                <th style={{ padding: '0.85rem 1rem' }}>Type</th>
                 <th style={{ padding: '0.85rem 1rem' }}>SRS Weight</th>
                 <th style={{ padding: '0.85rem 1rem' }}>Confidence Meter</th>
                 <th style={{ padding: '0.85rem 1rem' }}>Accuracy</th>
@@ -320,39 +287,34 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
               </tr>
             </thead>
             <tbody>
-              {filteredGroups.map(g => (
-                <tr key={g.groupKey} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              {filteredItems.map(g => (
+                <tr key={g.recipe.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                   
                   {/* Drink Name */}
                   <td style={{ padding: '0.85rem 1rem', fontWeight: 800, color: '#FFF' }}>
                     {g.displayName}
                   </td>
 
-                  {/* Hot & Iced Badges */}
+                  {/* Hot / Iced Badge */}
                   <td style={{ padding: '0.85rem 1rem' }}>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {g.recipes.map(r => (
-                        <span
-                          key={r.id}
-                          style={{
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            background: r.type === 'hot' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                            color: r.type === 'hot' ? '#EF4444' : '#3B82F6',
-                            border: `1px solid ${r.type === 'hot' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`
-                          }}
-                        >
-                          {r.type.toUpperCase()}
-                        </span>
-                      ))}
-                    </div>
+                    <span
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        background: g.type === 'hot' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                        color: g.type === 'hot' ? '#EF4444' : '#3B82F6',
+                        border: `1px solid ${g.type === 'hot' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`
+                      }}
+                    >
+                      {g.type.toUpperCase()}
+                    </span>
                   </td>
 
                   {/* Weight Score */}
                   <td style={{ padding: '0.85rem 1rem', fontWeight: 700, color: 'var(--text-main)', fontFamily: 'monospace' }}>
-                    {Math.round(g.avgWeight)}
+                    {Math.round(g.weight)}
                   </td>
 
                   {/* Confidence Bar */}

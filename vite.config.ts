@@ -10,7 +10,7 @@ try {
 export default defineConfig({
   plugins: [react()],
   define: {
-    __APP_VERSION__: JSON.stringify('1.6.0'),
+    __APP_VERSION__: JSON.stringify('1.6.1'),
     __GIT_COMMIT_HASH__: JSON.stringify(commitHash)
   }
 });
