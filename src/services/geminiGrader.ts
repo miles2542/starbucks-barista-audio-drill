@@ -31,7 +31,12 @@ export let lastEvaluationDebugLog: EvaluationDebugLog | null = null;
 
 const SYSTEM_PROMPT = `You are a strict, demanding, zero-fluff Starbucks Store Manager evaluating a trainee barista's recipe recall.
 
-CRITICAL STARBUCKS RECIPE CONTEXT & EVALUATION RULES:
+CRITICAL PRINCIPLE — ZERO FALSE-POSITIVE MANDATE:
+- PREFER FALSE NEGATIVES OVER FALSE POSITIVES! False positives ruin training accuracy.
+- If a trainee omits any specific measurement, cup landmark, fill level, ratio, or required action, set "pass": false immediately.
+- Do NOT guess, assume, or award PASS for vague or incomplete statements (e.g. saying just "đổ đá" instead of "đá đến top logo").
+
+CRITICAL STARBUCKS RECIPE CONTEXT & STRICT EVALUATION RULES:
 1. CODE-SWITCHING & PHONETIC NORMALIZATION (VIETNAMESE + ENGLISH):
    - Trainee recites recipes by mixing English barista terms ("Hot Latte", "steam milk", "queue shot", "latte art") with Vietnamese words ("đầu tiên sẽ là", "rót sữa", "vạch cao nhất").
    - ASR PHONETIC RECOGNITION: Recognize English terms spoken with Vietnamese accent or phonetically transliterated:
@@ -42,16 +47,17 @@ CRITICAL STARBUCKS RECIPE CONTEXT & EVALUATION RULES:
      * "kem" / "đá" / "phum" / "xirô" = syrup / ice / pumps
    - In "transcribedSpeech", transcribe into clean, natural Vietnamese + English terms.
 
-2. STRICT MANDATORY RECIPE REQUIREMENTS (MUST FAIL IF OMITTED):
+2. STRICT MANDATORY MEASUREMENTS & LANDMARKS (MUST FAIL IF VAGUE OR INEXACT):
    - Hot Cappuccino (C): Trainee MUST explicitly mention reducing milk pitcher size by 1 size ("giảm size pitcher" / "giảm lượng sữa 1 size" unless size is Tall). If omitted, set "pass": false!
-   - Iced Cappuccino (C): Foam MUST be under 6mm from rim ("foam dưới 6mm / cách 6mm"), NOT ice!
-   - Hot Mocha (M): MUST stir espresso with mocha sauce, milk to 12mm below rim (NO FOAM), top with whipped cream.
-   - Iced Mocha (M): MUST stir espresso with mocha sauce, milk to top line, ice to 6mm below rim, top with whipped cream (dome cap recommended).
+   - Iced Cappuccino (C): Trainee MUST specify ice fill level ("đá đến top logo") AND foam fill level ("foam dưới 6mm"). If trainee says only "đổ đá" or "đá đến 6mm" (wrong landmark), set "pass": false!
+   - Hot Mocha (M): MUST specify stirring espresso with mocha sauce, milk to 12mm below rim (NO FOAM), and whipped cream on top.
+   - Iced Mocha (M): MUST specify stirring espresso with mocha sauce, milk to top line, ice to 6mm below rim, and whipped cream (dome cap recommended).
    - Hot Caramel Macchiato (CM): MUST mention BOTH Vanilla AND Classic syrups (1 2 3 4 each), shots in shot glass, pour milk/foam 12mm below rim, shots poured through foam, caramel sauce 7-7-2.
    - Iced Caramel Macchiato (CM): MUST mention BOTH Vanilla AND Classic syrups (2 3 4 each), shots in shot glass, milk to top line, ice to 12mm below rim, shots poured on top of ice, caramel sauce 7-7-2.
+   - Fill Levels: Exact cup line specs ("vạch cao nhất 6mm", "nước lọc dưới vạch cao nhất") must be mentioned. Vague statements like "đổ nước" or "rót sữa" without fill level specs $\rightarrow$ set "pass": false!
 
-3. ADAPTIVE FLEXIBILITY & SELF-CORRECTION (MUST PASS IF SELF-CORRECTED):
-   - SELF-CORRECTION RULE: If trainee accidentally recites step B before step A, but immediately self-corrects ("thực ra phải làm step A trước rồi mới làm step B"), treat this as 100% CORRECT PASS!
+3. ADAPTIVE FLEXIBILITY & SELF-CORRECTION (PASS ONLY IF FINAL CORRECTION IS 100% COMPLETE):
+   - SELF-CORRECTION RULE: If trainee accidentally recites step B before step A, but immediately self-corrects ("thực ra phải làm step A trước rồi mới làm step B"), treat as PASS ONLY IF the final self-corrected answer contains all exact measurements and fill levels!
    - 3-NUMBER SHORT OMISSION RULE: Starbucks core recipes list 4 numbers [Short | Tall | Grande | Venti]. Trainees usually omit Short size and recite ONLY 3 numbers for [Tall | Grande | Venti] (e.g. Shots "2 2 3" or Syrup "3 4 5"). This is 100% CORRECT PASS! Do NOT require Short size!
 
 4. NO SPEECH DETECTED / SYSTEM ERROR HANDLING:
@@ -136,7 +142,7 @@ export async function evaluateWithGemini(
     noteOnSizes: "Trainee may recite 3 numbers for Tall, Grande, Venti (omitting Short). This is 100% PASS!"
   };
 
-  const promptText = `Target Recipe: ${JSON.stringify(cleanRecipePrompt, null, 2)}\nTrainee Recalled Steps Text: ${JSON.stringify(actions, null, 2)}\nEvaluate execution against standard Starbucks recipe rules.`;
+  const promptText = `Target Recipe: ${JSON.stringify(cleanRecipePrompt, null, 2)}\nTrainee Recalled Steps Text: ${JSON.stringify(actions, null, 2)}\nEvaluate execution strictly against Starbucks landmark, measurement, and recipe rules. Prefer FALSE NEGATIVES over FALSE POSITIVES!`;
 
   const executeApiCall = async (modelToUse: string): Promise<{ data: any; modelUsed: string }> => {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${apiKey}`;
