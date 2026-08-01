@@ -10,6 +10,74 @@ interface QuizModeProps {
   onComplete: () => void;
 }
 
+function FormattedFeedbackText({ text, pass }: { text: string; pass: boolean }) {
+  if (!text) return null;
+
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.92rem', lineHeight: '1.5' }}>
+      {lines.map((line, idx) => {
+        // FAIL / PASS Header line (e.g. **FAIL: Incorrect shot count**)
+        if (line.startsWith('**FAIL:') || line.startsWith('**PASS:')) {
+          const cleanHeader = line.replace(/\*\*/g, '');
+          return (
+            <div key={idx} style={{ fontWeight: 800, fontSize: '1rem', color: pass ? 'var(--accent-mint)' : 'var(--status-fail)', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px' }}>
+              {cleanHeader}
+            </div>
+          );
+        }
+
+        // Bullet point lines (e.g. * **Heard:** "..." or * **Correction:** ...)
+        if (line.startsWith('* ') || line.startsWith('- ')) {
+          const cleanLine = line.replace(/^[\*\-]\s+/, '');
+          const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', paddingLeft: '4px' }}>
+              <span style={{ color: pass ? 'var(--accent-mint)' : 'var(--status-fail)', fontWeight: 800 }}>•</span>
+              <div>
+                {parts.map((p, pIdx) => {
+                  if (p.startsWith('**') && p.endsWith('**')) {
+                    return <strong key={pIdx} style={{ color: '#FFF' }}>{p.replace(/\*\*/g, '')}</strong>;
+                  }
+                  return <span key={pIdx} style={{ color: 'var(--text-main)' }}>{p}</span>;
+                })}
+              </div>
+            </div>
+          );
+        }
+
+        // Section Headers (e.g. **Standard Recipe Steps:**)
+        if (line.startsWith('**') && line.endsWith('**')) {
+          return (
+            <div key={idx} style={{ fontWeight: 700, color: 'var(--text-muted)', marginTop: '0.25rem', fontSize: '0.82rem', letterSpacing: '0.5px' }}>
+              {line.replace(/\*\*/g, '')}
+            </div>
+          );
+        }
+
+        // Numbered Recipe Steps (e.g. 1. Steam milk)
+        const numMatch = line.match(/^(\d+)\.\s+(.*)/);
+        if (numMatch) {
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', paddingLeft: '8px', color: 'var(--text-main)' }}>
+              <span style={{ fontWeight: 700, color: 'var(--accent-mint)', minWidth: '18px' }}>{numMatch[1]}.</span>
+              <span>{numMatch[2]}</span>
+            </div>
+          );
+        }
+
+        // Standard text line
+        return (
+          <div key={idx} style={{ color: 'var(--text-main)' }}>
+            {line}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function QuizMode({ recipes, onComplete }: QuizModeProps) {
   const [currentRecipe, setCurrentRecipe] = useState<Recipe | null>(null);
   const [isListening, setIsListening] = useState(false);
@@ -66,7 +134,6 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
             setToastNotification(result.rotatedModelNotification);
           }
 
-          // ONLY update SRS state if NOT an error!
           if (!result.isError) {
             const allIds = recipes.map(r => r.id);
             SRSEngine.updateItem(targetRecipe.id, result.pass, allIds);
@@ -75,7 +142,6 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           if (result.isError) {
             speakTextWeb("No speech audio detected.", 1.10);
           } else if (result.pass) {
-            // On PASS: Web Speech speaks "Pass!"
             speakTextWeb("Pass!", 1.10);
 
             if (autoAdvanceMode === 'handsfree') {
@@ -84,7 +150,6 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
               }, 1200);
             }
           } else {
-            // On FAIL: Instant Web Speech "Fail!", THEN Gemini TTS reads Store Manager feedback
             speakTextWeb("Fail!", 1.10);
             setTimeout(() => {
               speakTextGemini(result.feedback, apiKey, 1.10);
@@ -220,9 +285,8 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       
-      {/* Top Control Bar: Mode Toggle & Skip Button */}
+      {/* Top Control Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        {/* Mode Selector */}
         <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-primary)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
           <button
             onClick={() => setAutoAdvanceMode('handsfree')}
@@ -262,7 +326,6 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           </button>
         </div>
 
-        {/* Skip Drink Button */}
         <button
           onClick={handleSkipDrinkNoMetrics}
           style={{
@@ -283,7 +346,6 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
         </button>
       </div>
 
-      {/* Auto-Rotation Toast Notification Banner */}
       {toastNotification && (
         <div style={{
           background: 'rgba(5, 150, 105, 0.15)',
@@ -311,7 +373,6 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
         </div>
       )}
 
-      {/* Missing API Key Alert Banner for New Trainees */}
       {!apiKey && (
         <div style={{
           background: 'rgba(245, 158, 11, 0.12)',
@@ -389,7 +450,6 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           </button>
         </div>
 
-        {/* Live Audio Status */}
         <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
           <div style={{ fontWeight: 700, fontSize: '1rem', color: isListening ? 'var(--status-fail)' : '#FFF' }}>
             {isGrading ? (
@@ -405,7 +465,6 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           </div>
         </div>
 
-        {/* Cancel Recording Button */}
         {isListening && (
           <button
             onClick={handleCancelRecording}
@@ -428,7 +487,6 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           </button>
         )}
 
-        {/* Live Transcript Preview */}
         {liveTranscript && (
           <div style={{
             marginTop: '1.25rem',
@@ -447,7 +505,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
         )}
       </div>
 
-      {/* Store Manager Feedback Card */}
+      {/* Structured Store Manager Feedback Card */}
       {evaluation && (
         <div 
           className="card" 
@@ -500,12 +558,12 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           </div>
 
           <div>
-            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <MessageSquare size={14} /> STORE MANAGER FEEDBACK
             </div>
-            <div style={{ fontSize: '0.95rem', color: '#FFF', lineHeight: '1.6', fontWeight: 500, whiteSpace: 'pre-wrap' }}>
-              {evaluation.feedback}
-            </div>
+            
+            {/* Structured HTML Formatted Feedback Component */}
+            <FormattedFeedbackText text={evaluation.feedback} pass={evaluation.pass} />
           </div>
 
           {evaluation.transcribedSpeech && (
@@ -514,7 +572,6 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
             </div>
           )}
 
-          {/* Action Buttons: Next vs Retry */}
           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
             {!evaluation.pass && !evaluation.isError && (
               <button
@@ -563,7 +620,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
         </div>
       )}
 
-      {/* Manual Override Buttons (Backup) */}
+      {/* Manual Override Buttons */}
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Sliders size={14} /> MANUAL OVERRIDE (IF OFF-LINE OR TESTING)
