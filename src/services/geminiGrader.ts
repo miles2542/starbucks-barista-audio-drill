@@ -4,6 +4,7 @@ export interface EvaluationResult {
   score: number;
   feedback: string;
   transcribedSpeech: string;
+  rotatedModelNotification?: string;
 }
 
 export interface RecipeContext {
@@ -86,6 +87,26 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+// Check if a model has been marked quota-exhausted today
+export function isModelExhausted(model: string): boolean {
+  const dateStr = localStorage.getItem(`quota_exhausted_${model}`);
+  if (!dateStr) return false;
+  
+  const savedDate = new Date(dateStr).toDateString();
+  const todayDate = new Date().toDateString();
+  
+  if (savedDate === todayDate) {
+    return true;
+  } else {
+    localStorage.removeItem(`quota_exhausted_${model}`);
+    return false;
+  }
+}
+
+export function markModelExhausted(model: string) {
+  localStorage.setItem(`quota_exhausted_${model}`, new Date().toISOString());
+}
+
 export async function evaluateWithGemini(
   apiKey: string,
   recipe: RecipeContext,
@@ -97,8 +118,17 @@ export async function evaluateWithGemini(
     return fallbackGrader(recipe, actions, audioBlobUrl);
   }
 
-  const selectedModel = localStorage.getItem('gemini_grader_model') || 'gemini-3.5-flash-lite';
+  let preferredModel = localStorage.getItem('gemini_grader_model') || 'gemini-3.5-flash-lite';
   const selectedThinking = localStorage.getItem('gemini_thinking_level') || 'HIGH';
+
+  let currentModel = preferredModel;
+  let rotationNote: string | undefined = undefined;
+
+  // Auto-check if preferred model is non-lite and exhausted today
+  if (preferredModel !== 'gemini-3.5-flash-lite' && isModelExhausted(preferredModel)) {
+    currentModel = 'gemini-3.5-flash-lite';
+    rotationNote = `Model ${preferredModel} has exceeded its daily API quota (20 RPD limit). Auto-rotated to Gemini 3.5 Flash-Lite (will auto-reset tomorrow).`;
+  }
 
   const cleanRecipePrompt = {
     drinkName: recipe.drinkName,
@@ -108,12 +138,11 @@ export async function evaluateWithGemini(
 
   const promptText = `Target Recipe: ${JSON.stringify(cleanRecipePrompt, null, 2)}\nTrainee Recalled Steps Text: ${JSON.stringify(actions, null, 2)}\nEvaluate execution against standard Starbucks recipe rules.`;
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
+  const executeApiCall = async (modelToUse: string): Promise<{ data: any; modelUsed: string }> => {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${apiKey}`;
 
     const parts: any[] = [];
 
-    // Multimodal Audio Attachment
     if (audioBlob && audioBlob.size > 500) {
       const base64Audio = await blobToBase64(audioBlob);
       const cleanMimeType = (audioBlob.type || 'audio/webm').split(';')[0];
@@ -157,13 +186,45 @@ export async function evaluateWithGemini(
       })
     });
 
-    if (!response.ok) {
-      throw new Error(`API Error (${selectedModel}): ${response.statusText}`);
+    if (response.status === 429) {
+      throw { status: 429, message: 'Quota Exceeded / Rate Limit' };
     }
 
-    const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    
+    if (!response.ok) {
+      throw new Error(`API Error (${modelToUse}): ${response.statusText}`);
+    }
+
+    const resJson = await response.json();
+    return { data: resJson, modelUsed: modelToUse };
+  };
+
+  try {
+    let resultPayload: { data: any; modelUsed: string };
+
+    try {
+      resultPayload = await executeApiCall(currentModel);
+    } catch (err: any) {
+      if (err?.status === 429) {
+        console.warn(`[Auto-Rotate] HTTP 429 hit for ${currentModel}. Initiating model rotation...`);
+        
+        if (currentModel !== 'gemini-3.5-flash-lite') {
+          // Non-lite model exhausted daily quota
+          markModelExhausted(currentModel);
+          currentModel = 'gemini-3.5-flash-lite';
+          rotationNote = `Model ${preferredModel} exceeded daily API quota (20 RPD). Auto-rotated to Gemini 3.5 Flash-Lite (will reset tomorrow).`;
+          resultPayload = await executeApiCall(currentModel);
+        } else {
+          // 3.5-flash-lite temporary RPM rate limit spike -> Rotate temporarily to 3.5-flash or 3.6-flash
+          const altModel = !isModelExhausted('gemini-3.5-flash') ? 'gemini-3.5-flash' : 'gemini-3.6-flash';
+          rotationNote = `Temporary rate limit encountered on Gemini 3.5 Flash-Lite. Auto-rotated temporarily to ${altModel} to maintain evaluation.`;
+          resultPayload = await executeApiCall(altModel);
+        }
+      } else {
+        throw err;
+      }
+    }
+
+    const rawText = resultPayload.data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawText) {
       throw new Error('Invalid response format');
     }
@@ -174,10 +235,14 @@ export async function evaluateWithGemini(
       parsed.pass = false;
     }
 
+    if (rotationNote) {
+      parsed.rotatedModelNotification = rotationNote;
+    }
+
     // Save debug log for modal viewer
     lastEvaluationDebugLog = {
       timestamp: new Date().toLocaleTimeString(),
-      systemPrompt: `MODEL: ${selectedModel} | THINKING: ${selectedThinking}\n\n${SYSTEM_PROMPT}`,
+      systemPrompt: `MODEL USED: ${resultPayload.modelUsed} | THINKING: ${selectedThinking}\n\n${SYSTEM_PROMPT}`,
       requestPrompt: promptText,
       rawResponseText: rawText,
       parsedResult: parsed,
@@ -192,11 +257,12 @@ export async function evaluateWithGemini(
       isError: true,
       score: 0,
       feedback: `SYSTEM ERROR: Unable to process audio. (${error?.message || error})`,
-      transcribedSpeech: '(Audio evaluation error)'
+      transcribedSpeech: '(Audio evaluation error)',
+      rotatedModelNotification: rotationNote
     };
     lastEvaluationDebugLog = {
       timestamp: new Date().toLocaleTimeString(),
-      systemPrompt: `MODEL: ${selectedModel} | THINKING: ${selectedThinking}\n\n${SYSTEM_PROMPT}`,
+      systemPrompt: `MODEL: ${currentModel} | THINKING: ${selectedThinking}\n\n${SYSTEM_PROMPT}`,
       requestPrompt: promptText,
       rawResponseText: `API Error: ${error?.message || error}`,
       parsedResult: errRes,

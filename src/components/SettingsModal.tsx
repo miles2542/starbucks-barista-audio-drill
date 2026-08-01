@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { SRSEngine } from '../services/srsEngine';
-import { Key, QrCode, Download, Upload, RotateCcw, ExternalLink, Cpu, Brain } from 'lucide-react';
+import { isModelExhausted } from '../services/geminiGrader';
+import { Key, QrCode, Download, Upload, RotateCcw, ExternalLink, Cpu, Brain, CheckCircle } from 'lucide-react';
 
 interface SettingsModalProps {
   onResetRecipes?: () => void;
@@ -107,14 +108,15 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
       <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         <div>
           <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Cpu size={18} /> Store Manager Grader Model
+            <Cpu size={18} /> Store Manager Grader Model & Auto-Rotation
           </h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-            Select the Gemini model for strict recipe evaluation and multimodal audio transcription.
+            If a model hits daily free tier limits (HTTP 429), the engine auto-rotates to 3.5 Flash-Lite to ensure continuous practice.
           </p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+          {/* Gemini 3.5 Flash-Lite */}
           <button
             onClick={() => handleSaveModelConfig('gemini-3.5-flash-lite', thinkingLevel)}
             style={{
@@ -130,14 +132,18 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               gap: '4px'
             }}
           >
-            <div style={{ fontWeight: 800, fontSize: '0.85rem', color: selectedModel === 'gemini-3.5-flash-lite' ? 'var(--accent-mint)' : '#FFF' }}>
-              3.5 Flash-Lite (Default)
+            <div style={{ fontWeight: 800, fontSize: '0.82rem', color: selectedModel === 'gemini-3.5-flash-lite' ? 'var(--accent-mint)' : '#FFF', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <CheckCircle size={14} style={{ color: 'var(--accent-mint)' }} /> 3.5 Flash-Lite
             </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              Lightweight & standard (~4.7s).
+            <div style={{ fontSize: '0.7rem', color: 'var(--accent-mint)', fontWeight: 700 }}>
+              500 drills/day (Recommended)
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+              15 RPM limit, sub-second latency, zero quota drops.
             </div>
           </button>
 
+          {/* Gemini 3.5 Flash */}
           <button
             onClick={() => handleSaveModelConfig('gemini-3.5-flash', thinkingLevel)}
             style={{
@@ -150,17 +156,22 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',
-              gap: '4px'
+              gap: '4px',
+              opacity: isModelExhausted('gemini-3.5-flash') ? 0.6 : 1
             }}
           >
-            <div style={{ fontWeight: 800, fontSize: '0.85rem', color: selectedModel === 'gemini-3.5-flash' ? 'var(--accent-mint)' : '#FFF' }}>
-              3.5 Flash (Fastest 3.3s)
+            <div style={{ fontWeight: 800, fontSize: '0.82rem', color: selectedModel === 'gemini-3.5-flash' ? 'var(--accent-mint)' : '#FFF' }}>
+              3.5 Flash (Fastest 3.9s)
             </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              Ultra-fast audio processing & high speed.
+            <div style={{ fontSize: '0.7rem', color: isModelExhausted('gemini-3.5-flash') ? '#EF4444' : '#F59E0B', fontWeight: 700 }}>
+              {isModelExhausted('gemini-3.5-flash') ? 'Quota Exhausted Today' : '20 drills/day (Capped)'}
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+              Auto-rotates to 3.5 Flash-Lite when 20 RPD cap hit.
             </div>
           </button>
 
+          {/* Gemini 3.6 Flash */}
           <button
             onClick={() => handleSaveModelConfig('gemini-3.6-flash', thinkingLevel)}
             style={{
@@ -173,14 +184,18 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',
-              gap: '4px'
+              gap: '4px',
+              opacity: isModelExhausted('gemini-3.6-flash') ? 0.6 : 1
             }}
           >
-            <div style={{ fontWeight: 800, fontSize: '0.85rem', color: selectedModel === 'gemini-3.6-flash' ? 'var(--accent-mint)' : '#FFF' }}>
+            <div style={{ fontWeight: 800, fontSize: '0.82rem', color: selectedModel === 'gemini-3.6-flash' ? 'var(--accent-mint)' : '#FFF' }}>
               3.6 Flash (Deepest)
             </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              100% verbatim audio & self-correction.
+            <div style={{ fontSize: '0.7rem', color: isModelExhausted('gemini-3.6-flash') ? '#EF4444' : '#F59E0B', fontWeight: 700 }}>
+              {isModelExhausted('gemini-3.6-flash') ? 'Quota Exhausted Today' : '20 drills/day (Capped)'}
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+              Auto-rotates to 3.5 Flash-Lite when 20 RPD cap hit.
             </div>
           </button>
         </div>
@@ -234,7 +249,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
                 cursor: 'pointer'
               }}
             >
-              High (Budget 4096)
+              High (Default - Budget 4096)
             </button>
           </div>
         </div>

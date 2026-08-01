@@ -3,7 +3,7 @@ import type { Recipe } from '../types/recipe';
 import { audioListener, speakTextGemini, speakTextWeb } from '../services/audioEngine';
 import { SRSEngine } from '../services/srsEngine';
 import { evaluateWithGemini, lastEvaluationDebugLog, type EvaluationDebugLog, type EvaluationResult } from '../services/geminiGrader';
-import { Mic, Check, X, Loader, Award, RefreshCw, Square, FileText, Terminal, XCircle, Volume2, MessageSquare, Sparkles, Sliders, RotateCcw, Ban, Shuffle, AlertTriangle, Key } from 'lucide-react';
+import { Mic, Check, X, Loader, Award, RefreshCw, Square, Terminal, XCircle, MessageSquare, Sparkles, Sliders, RotateCcw, Ban, Shuffle, AlertTriangle, Key, Info } from 'lucide-react';
 
 interface QuizModeProps {
   recipes: Recipe[];
@@ -19,6 +19,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
   const [isGrading, setIsGrading] = useState(false);
   const [showDebugModal, setShowDebugModal] = useState(false);
   const [currentDebugLog, setCurrentDebugLog] = useState<EvaluationDebugLog | null>(null);
+  const [toastNotification, setToastNotification] = useState<string | null>(null);
   
   const [autoAdvanceMode, setAutoAdvanceMode] = useState<'handsfree' | 'manual'>('handsfree');
 
@@ -61,6 +62,10 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           setEvaluation(result);
           setCurrentDebugLog(lastEvaluationDebugLog);
 
+          if (result.rotatedModelNotification) {
+            setToastNotification(result.rotatedModelNotification);
+          }
+
           // ONLY update SRS state if NOT an error!
           if (!result.isError) {
             const allIds = recipes.map(r => r.id);
@@ -68,20 +73,16 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           }
 
           if (result.isError) {
-            // On ERROR: Speak error notification
             speakTextWeb("No speech audio detected.", 1.10);
           } else if (result.pass) {
-            // On PASS: Instant Web Speech "Pass!"
             speakTextWeb("Pass!", 1.10);
 
-            // Auto-advance if in hands-free mode
             if (autoAdvanceMode === 'handsfree') {
               setTimeout(() => {
                 advanceToNext(true);
               }, 1200);
             }
           } else {
-            // On FAIL: Gemini 3.1 TTS speaks Store Manager feedback
             speakTextGemini(result.feedback, apiKey, 1.10);
           }
 
@@ -175,14 +176,6 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
     }
   };
 
-  const handleManualGrade = (pass: boolean) => {
-    if (currentRecipe) {
-      const allIds = recipes.map(r => r.id);
-      SRSEngine.updateItem(currentRecipe.id, pass, allIds);
-    }
-    advanceToNext(false);
-  };
-
   if (!currentRecipe) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
@@ -211,70 +204,62 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
             gap: '8px'
           }}
         >
-          <RefreshCw size={16} /> Drill All 6 Recipes Now
+          <RefreshCw size={16} /> Drill Recipes Now
         </button>
       </div>
     );
   }
 
   const dynamicScale = isListening ? 1 + (audioVolume / 100) * 0.4 : 1;
-  const dynamicOpacity = isListening ? 0.3 + (audioVolume / 100) * 0.7 : 0.4;
 
   return (
-    <div className="card" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* Top Chip Selector Mode Toggle & Skip Button */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      
+      {/* Top Control Bar: Mode Toggle & Skip Button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{
-          display: 'inline-flex',
-          background: 'var(--bg-primary)',
-          padding: '4px',
-          borderRadius: '8px',
-          border: '1px solid var(--border-subtle)',
-          gap: '4px'
-        }}>
+        {/* Mode Selector */}
+        <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-primary)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
           <button
             onClick={() => setAutoAdvanceMode('handsfree')}
             style={{
-              padding: '6px 14px',
+              padding: '0.4rem 0.85rem',
               borderRadius: '6px',
               border: 'none',
               background: autoAdvanceMode === 'handsfree' ? 'var(--accent-mint)' : 'transparent',
               color: autoAdvanceMode === 'handsfree' ? '#FFF' : 'var(--text-muted)',
-              fontWeight: 700,
               fontSize: '0.8rem',
+              fontWeight: 700,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.2s ease'
+              gap: '6px'
             }}
           >
-            <Sparkles size={14} /> Hands-Free (Auto-Advance)
+            <Sparkles size={14} /> Hands-Free
           </button>
           <button
             onClick={() => setAutoAdvanceMode('manual')}
             style={{
-              padding: '6px 14px',
+              padding: '0.4rem 0.85rem',
               borderRadius: '6px',
               border: 'none',
-              background: autoAdvanceMode === 'manual' ? 'var(--accent-mint)' : 'transparent',
+              background: autoAdvanceMode === 'manual' ? 'var(--bg-surface)' : 'transparent',
               color: autoAdvanceMode === 'manual' ? '#FFF' : 'var(--text-muted)',
-              fontWeight: 700,
               fontSize: '0.8rem',
+              fontWeight: 700,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.2s ease'
+              gap: '6px'
             }}
           >
-            <Sliders size={14} /> Manual Review
+            <Sliders size={14} /> Manual
           </button>
         </div>
 
+        {/* Skip Drink Button */}
         <button
           onClick={handleSkipDrinkNoMetrics}
-          title="Switch to another drink at will (does not affect SRS metrics)"
           style={{
             padding: '0.5rem 0.85rem',
             background: 'var(--bg-primary)',
@@ -292,6 +277,34 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           <Shuffle size={14} /> Skip Drink
         </button>
       </div>
+
+      {/* Auto-Rotation Toast Notification Banner */}
+      {toastNotification && (
+        <div style={{
+          background: 'rgba(5, 150, 105, 0.15)',
+          border: '1px solid var(--accent-mint)',
+          padding: '0.85rem 1.25rem',
+          borderRadius: '8px',
+          fontSize: '0.85rem',
+          color: '#FFF',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '10px',
+          textAlign: 'left'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Info size={18} style={{ color: 'var(--accent-mint)', flexShrink: 0 }} />
+            <span>{toastNotification}</span>
+          </div>
+          <button
+            onClick={() => setToastNotification(null)}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Missing API Key Alert Banner for New Trainees */}
       {!apiKey && (
@@ -319,57 +332,82 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
         <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '4px 0 0 0', color: '#FFF' }}>
           Recite: {currentRecipe.name}
         </h1>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-          Say <strong style={{ color: 'var(--accent-mint)' }}>"Over"</strong> (or <strong>"Hết"</strong>) or tap mic again to finish.
-        </p>
       </div>
 
-      {/* Dynamic Voice Reactive Mic Container */}
-      <div style={{ margin: '1.25rem 0', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-        <div style={{
-          position: 'absolute',
-          width: '110px',
-          height: '110px',
-          borderRadius: '50%',
-          border: isListening ? '3px solid var(--accent-mint)' : '2px solid var(--border-subtle)',
-          transform: `scale(${dynamicScale})`,
-          opacity: dynamicOpacity,
-          transition: 'transform 0.08s ease-out, opacity 0.08s ease-out',
-          boxShadow: isListening && audioVolume > 15 ? '0 0 30px rgba(5, 150, 105, 0.6)' : 'none'
-        }} />
+      {/* Interactive Microphone Button Card */}
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2.5rem 1.5rem', textTransform: 'none', position: 'relative' }}>
+        <div style={{ position: 'relative', margin: '1rem 0' }}>
+          {isListening && (
+            <div
+              style={{
+                position: 'absolute',
+                top: -12,
+                left: -12,
+                right: -12,
+                bottom: -12,
+                borderRadius: '50%',
+                background: 'rgba(5, 150, 105, 0.25)',
+                transform: `scale(${dynamicScale})`,
+                transition: 'transform 0.08s ease-out',
+                pointerEvents: 'none'
+              }}
+            />
+          )}
+          
+          <button
+            onClick={handleToggleListening}
+            disabled={isGrading}
+            style={{
+              width: '88px',
+              height: '88px',
+              borderRadius: '50%',
+              background: isListening ? 'var(--status-fail)' : 'var(--accent-mint)',
+              color: 'white',
+              border: 'none',
+              cursor: isGrading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: isListening ? '0 0 30px rgba(239, 68, 68, 0.5)' : '0 0 25px rgba(5, 150, 105, 0.4)',
+              transition: 'all 0.2s ease',
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
+            {isGrading ? (
+              <Loader size={36} className="spin-animation" />
+            ) : isListening ? (
+              <Square size={32} />
+            ) : (
+              <Mic size={36} />
+            )}
+          </button>
+        </div>
 
-        <button
-          onClick={handleToggleListening}
-          disabled={isGrading}
-          style={{
-            width: '90px',
-            height: '90px',
-            borderRadius: '50%',
-            border: 'none',
-            background: isListening ? 'var(--status-fail)' : 'var(--accent-mint)',
-            color: 'white',
-            cursor: isGrading ? 'default' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: isListening ? '0 0 25px rgba(239, 68, 68, 0.6)' : '0 0 20px rgba(5, 150, 105, 0.4)',
-            transition: 'all 0.2s ease',
-            zIndex: 2,
-            opacity: isGrading ? 0.6 : 1
-          }}
-        >
-          {isListening ? <Square size={32} /> : <Mic size={40} />}
-        </button>
-      </div>
+        {/* Live Audio Status */}
+        <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+          <div style={{ fontWeight: 700, fontSize: '1rem', color: isListening ? 'var(--status-fail)' : '#FFF' }}>
+            {isGrading ? (
+              'Store Manager evaluating your recipe recall...'
+            ) : isListening ? (
+              'Listening... Recite 4 steps, then say "Over" or pause 7s'
+            ) : (
+              'Tap microphone to speak recipe'
+            )}
+          </div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+            {isListening ? 'Speak clearly: Steam milk -> Queue shots -> Add syrup -> Finish' : 'Hands-free voice recognition active'}
+          </div>
+        </div>
 
-      {/* Cancel Recording Button while listening */}
-      {isListening && (
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
+        {/* Cancel Recording Button */}
+        {isListening && (
           <button
             onClick={handleCancelRecording}
             style={{
-              padding: '0.45rem 0.9rem',
-              background: 'rgba(239, 68, 68, 0.15)',
+              marginTop: '1.25rem',
+              padding: '0.45rem 1rem',
+              background: 'rgba(239, 68, 68, 0.12)',
               color: 'var(--status-fail)',
               border: '1px solid var(--status-fail)',
               borderRadius: '6px',
@@ -381,389 +419,250 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
               gap: '6px'
             }}
           >
-            <Ban size={14} /> Cancel Recording (Discard)
+            <Ban size={14} /> Cancel Recording (Don't Grade)
           </button>
-        </div>
-      )}
+        )}
 
-      {/* Real-Time Live Spoken Transcript */}
-      {isListening && liveTranscript && (
-        <div style={{
-          background: 'var(--bg-primary)',
-          border: '1px solid var(--border-subtle)',
-          padding: '0.75rem 1rem',
-          borderRadius: '8px',
-          fontSize: '0.9rem',
-          color: 'var(--accent-mint)',
-          fontStyle: 'italic',
-          maxWidth: '500px',
-          margin: '0 auto'
-        }}>
-          "{liveTranscript}"
-        </div>
-      )}
+        {/* Live Transcript Preview */}
+        {liveTranscript && (
+          <div style={{
+            marginTop: '1.25rem',
+            padding: '0.75rem 1rem',
+            background: 'var(--bg-primary)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '6px',
+            fontSize: '0.85rem',
+            color: 'var(--text-main)',
+            maxWidth: '100%',
+            wordBreak: 'break-word'
+          }}>
+            <span style={{ color: 'var(--accent-mint)', fontWeight: 700 }}>Heard: </span>
+            "{liveTranscript}"
+          </div>
+        )}
+      </div>
 
-      {isGrading && (
-        <div style={{ color: 'var(--accent-mint)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
-          <Loader className="spin" size={18} /> Store Manager Evaluating (Gemini 3.5 Flash-Lite)...
-        </div>
-      )}
-
-      {/* Verdict Feedback Card (PASS / FAIL / ERROR) */}
+      {/* Store Manager Feedback Card */}
       {evaluation && (
-        <div
-          style={{
-            padding: '1.25rem',
-            borderRadius: '8px',
-            textAlign: 'left',
-            background: evaluation.isError 
-              ? 'rgba(245, 158, 11, 0.12)' 
-              : evaluation.pass ? 'rgba(5, 150, 105, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-            border: evaluation.isError
-              ? '1px solid #F59E0B'
-              : evaluation.pass ? '1px solid var(--accent-mint)' : '1px solid var(--status-fail)',
+        <div 
+          className="card" 
+          style={{ 
+            borderLeft: `4px solid ${evaluation.isError ? '#F59E0B' : evaluation.pass ? 'var(--accent-mint)' : 'var(--status-fail)'}`,
             display: 'flex',
             flexDirection: 'column',
-            gap: '0.75rem'
+            gap: '1rem',
+            background: evaluation.isError ? 'rgba(245, 158, 11, 0.05)' : evaluation.pass ? 'rgba(5, 150, 105, 0.05)' : 'rgba(239, 68, 68, 0.05)'
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{
-              fontWeight: 800,
-              fontSize: '0.9rem',
-              letterSpacing: '1px',
-              color: evaluation.isError ? '#F59E0B' : evaluation.pass ? 'var(--accent-mint)' : 'var(--status-fail)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              {evaluation.isError ? <AlertTriangle size={18} /> : evaluation.pass ? <Check size={18} /> : <X size={18} />}
-              {evaluation.isError ? 'SYSTEM / AUDIO ERROR (NOT COUNTED IN SRS)' : evaluation.pass ? 'STORE MANAGER VERDICT: PASS' : 'STORE MANAGER VERDICT: FAIL'}
-            </span>
-            {!evaluation.isError && (
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                Score: {evaluation.score}%
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {evaluation.isError ? (
+                <AlertTriangle size={24} style={{ color: '#F59E0B' }} />
+              ) : evaluation.pass ? (
+                <Check size={24} style={{ color: 'var(--accent-mint)' }} />
+              ) : (
+                <X size={24} style={{ color: 'var(--status-fail)' }} />
+              )}
+              <span style={{ 
+                fontWeight: 800, 
+                fontSize: '1.2rem', 
+                color: evaluation.isError ? '#F59E0B' : evaluation.pass ? 'var(--accent-mint)' : 'var(--status-fail)' 
+              }}>
+                {evaluation.isError ? 'SYSTEM ERROR' : evaluation.pass ? 'PASS' : 'FAIL'}
               </span>
+            </div>
+
+            {currentDebugLog && (
+              <button
+                onClick={() => setShowDebugModal(true)}
+                style={{
+                  background: 'var(--bg-primary)',
+                  color: 'var(--text-muted)',
+                  border: '1px solid var(--border-subtle)',
+                  padding: '0.4rem 0.75rem',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Terminal size={14} /> Debug Log
+              </button>
             )}
           </div>
 
-          <p style={{ fontSize: '0.95rem', margin: 0, color: '#FFF', lineHeight: '1.4' }}>
-            {evaluation.feedback}
-          </p>
+          <div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <MessageSquare size={14} /> STORE MANAGER FEEDBACK
+            </div>
+            <div style={{ fontSize: '0.95rem', color: '#FFF', lineHeight: '1.5', fontWeight: 500 }}>
+              {evaluation.feedback}
+            </div>
+          </div>
 
-          {evaluation.transcribedSpeech && !evaluation.isError && (
-            <div style={{ fontSize: '0.85rem', color: 'var(--accent-mint)', background: 'var(--bg-primary)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <MessageSquare size={14} />
-              <span><strong>Heard Speech:</strong> "{evaluation.transcribedSpeech}"</span>
+          {evaluation.transcribedSpeech && (
+            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              <strong>ASR Transcribed Speech:</strong> "{evaluation.transcribedSpeech}"
             </div>
           )}
 
+          {/* Action Buttons: Next vs Retry */}
           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-            {evaluation.isError ? (
+            {!evaluation.pass && !evaluation.isError && (
               <button
                 onClick={handleRetryCurrentDrink}
                 style={{
                   flex: 1,
-                  padding: '0.65rem',
-                  background: '#F59E0B',
-                  color: '#181A1B',
-                  border: 'none',
+                  padding: '0.75rem 1rem',
+                  background: 'var(--bg-primary)',
+                  color: 'var(--status-fail)',
+                  border: '1px solid var(--status-fail)',
                   borderRadius: '6px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px'
-                }}
-              >
-                <RotateCcw size={16} /> Re-record Audio Turn
-              </button>
-            ) : evaluation.pass ? (
-              <button
-                onClick={() => advanceToNext(false)}
-                style={{
-                  flex: 1,
-                  padding: '0.65rem',
-                  background: 'var(--accent-mint)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                Next Drink →
-              </button>
-            ) : (
-              <button
-                onClick={handleRetryCurrentDrink}
-                style={{
-                  flex: 1,
-                  padding: '0.65rem',
-                  background: 'var(--status-fail)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
+                  fontSize: '0.9rem',
                   fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '6px'
+                  gap: '8px'
                 }}
               >
-                <RotateCcw size={16} /> Retry {currentRecipe.name}
+                <RotateCcw size={16} /> Retry This Drink
               </button>
             )}
 
             <button
-              onClick={() => setShowDebugModal(true)}
+              onClick={() => advanceToNext(autoAdvanceMode === 'handsfree')}
               style={{
-                padding: '0.65rem 1rem',
-                background: 'var(--bg-primary)',
-                color: 'var(--text-muted)',
-                border: '1px solid var(--border-subtle)',
+                flex: 1,
+                padding: '0.75rem 1rem',
+                background: 'var(--accent-mint)',
+                color: 'white',
+                border: 'none',
                 borderRadius: '6px',
-                fontWeight: 600,
-                fontSize: '0.85rem',
+                fontSize: '0.9rem',
+                fontWeight: 700,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                justifyContent: 'center',
+                gap: '8px'
               }}
             >
-              <FileText size={16} /> View Chat / Debug Log
+              Next Drink
             </button>
           </div>
         </div>
       )}
 
-      {/* Manual Override Buttons */}
-      {!evaluation && !isListening && !isGrading && (
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+      {/* Manual Override Buttons (Backup) */}
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Sliders size={14} /> MANUAL OVERRIDE (IF OFF-LINE OR TESTING)
+        </div>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button
-            onClick={() => handleManualGrade(true)}
+            onClick={() => {
+              const allIds = recipes.map(r => r.id);
+              SRSEngine.updateItem(currentRecipe.id, true, allIds);
+              advanceToNext(autoAdvanceMode === 'handsfree');
+            }}
             style={{
-              padding: '0.5rem 1rem',
-              background: 'transparent',
+              flex: 1,
+              padding: '0.65rem',
+              background: 'rgba(5, 150, 105, 0.15)',
               color: 'var(--accent-mint)',
               border: '1px solid var(--accent-mint)',
               borderRadius: '6px',
+              fontWeight: 700,
               fontSize: '0.85rem',
-              fontWeight: 600,
               cursor: 'pointer'
             }}
           >
             Manual Pass
           </button>
           <button
-            onClick={() => handleManualGrade(false)}
+            onClick={() => {
+              const allIds = recipes.map(r => r.id);
+              SRSEngine.updateItem(currentRecipe.id, false, allIds);
+              advanceToNext(false);
+            }}
             style={{
-              padding: '0.5rem 1rem',
-              background: 'transparent',
+              flex: 1,
+              padding: '0.65rem',
+              background: 'rgba(239, 68, 68, 0.15)',
               color: 'var(--status-fail)',
               border: '1px solid var(--status-fail)',
               borderRadius: '6px',
+              fontWeight: 700,
               fontSize: '0.85rem',
-              fontWeight: 600,
               cursor: 'pointer'
             }}
           >
             Manual Fail
           </button>
         </div>
-      )}
-
-      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-        Active Drink: <strong>{currentRecipe.name}</strong>
       </div>
 
-      {/* Evaluation Debug History Popup Modal */}
-      {showDebugModal && (
+      {/* Debug Log Inspection Modal */}
+      {showDebugModal && currentDebugLog && (
         <div style={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0,0,0,0.75)',
+          background: 'rgba(0,0,0,0.85)',
           display: 'flex',
-          justifyContent: 'center',
           alignItems: 'center',
-          zIndex: 100,
-          padding: '1.5rem'
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
         }}>
-          <div style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: '12px',
-            width: '100%',
-            maxWidth: '720px',
-            maxHeight: '85vh',
-            display: 'flex',
-            flexDirection: 'column',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
-            overflow: 'hidden'
-          }}>
-            {/* Modal Header */}
-            <div style={{
-              padding: '1.2rem 1.5rem',
-              borderBottom: '1px solid var(--border-subtle)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              background: 'var(--bg-primary)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Terminal size={20} style={{ color: 'var(--accent-mint)' }} />
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#FFF' }}>
-                  Gemini Evaluation Chat History & Debug Log
-                </h3>
+          <div className="card" style={{ maxWidth: '650px', width: '100%', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Terminal size={18} /> Evaluation Debug Log ({currentDebugLog.timestamp})
+              </h3>
+              <button onClick={() => setShowDebugModal(false)} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer' }}>
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            {currentDebugLog.audioBlobUrl && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>Recorded Audio Playback:</div>
+                <audio controls src={currentDebugLog.audioBlobUrl} style={{ width: '100%' }} />
               </div>
-              <button
-                onClick={() => setShowDebugModal(false)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-              >
-                <XCircle size={22} />
-              </button>
+            )}
+
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px' }}>System Prompt Persona:</div>
+              <pre style={{ background: 'var(--bg-primary)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-muted)', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
+                {currentDebugLog.systemPrompt}
+              </pre>
             </div>
 
-            {/* Modal Content */}
-            <div style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'left' }}>
-              {currentDebugLog ? (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                        EVALUATION TIMESTAMP
-                      </span>
-                      <div style={{ fontSize: '0.9rem', color: '#FFF', marginTop: '2px', fontFamily: 'monospace' }}>
-                        {currentDebugLog.timestamp}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Playable Scrubbable Audio Player for Recorded Turn */}
-                  {currentDebugLog.audioBlobUrl && (
-                    <div style={{
-                      background: 'var(--bg-primary)',
-                      border: '1px solid var(--border-subtle)',
-                      padding: '1rem',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.5rem'
-                    }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-mint)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Volume2 size={16} /> RECORDED TURN AUDIO (PLAYABLE & SCRUBBABLE)
-                      </span>
-                      <audio controls src={currentDebugLog.audioBlobUrl} style={{ width: '100%', marginTop: '4px' }} />
-                    </div>
-                  )}
-
-                  <div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-mint)', textTransform: 'uppercase' }}>
-                      GEMINI TRANSCRIBED SPEECH HEARD
-                    </span>
-                    <div style={{
-                      background: 'var(--bg-primary)',
-                      border: '1px solid var(--border-subtle)',
-                      padding: '0.85rem',
-                      borderRadius: '6px',
-                      color: 'var(--accent-mint)',
-                      fontSize: '0.9rem',
-                      fontWeight: 600,
-                      marginTop: '4px'
-                    }}>
-                      "{currentDebugLog.parsedResult.transcribedSpeech || 'Recited recipe steps.'}"
-                    </div>
-                  </div>
-
-                  <div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      RAW USER PROMPT SENT TO GEMINI
-                    </span>
-                    <pre style={{
-                      background: 'var(--bg-primary)',
-                      border: '1px solid var(--border-subtle)',
-                      padding: '0.85rem',
-                      borderRadius: '6px',
-                      color: '#FFF',
-                      fontSize: '0.85rem',
-                      whiteSpace: 'pre-wrap',
-                      marginTop: '4px'
-                    }}>
-                      {currentDebugLog.requestPrompt}
-                    </pre>
-                  </div>
-
-                  <div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      STORE MANAGER SYSTEM PROMPT (WITH CUP CODES KNOWLEDGE)
-                    </span>
-                    <pre style={{
-                      background: 'var(--bg-primary)',
-                      border: '1px solid var(--border-subtle)',
-                      padding: '0.85rem',
-                      borderRadius: '6px',
-                      color: 'var(--text-muted)',
-                      fontSize: '0.8rem',
-                      whiteSpace: 'pre-wrap',
-                      maxHeight: '160px',
-                      overflowY: 'auto',
-                      marginTop: '4px'
-                    }}>
-                      {currentDebugLog.systemPrompt}
-                    </pre>
-                  </div>
-
-                  <div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-mint)', textTransform: 'uppercase' }}>
-                      GEMINI STORE MANAGER RAW JSON RESPONSE
-                    </span>
-                    <pre style={{
-                      background: 'var(--bg-primary)',
-                      border: '1px solid var(--border-subtle)',
-                      padding: '0.85rem',
-                      borderRadius: '6px',
-                      color: 'var(--accent-mint)',
-                      fontSize: '0.85rem',
-                      fontFamily: 'monospace',
-                      whiteSpace: 'pre-wrap',
-                      marginTop: '4px'
-                    }}>
-                      {currentDebugLog.rawResponseText}
-                    </pre>
-                  </div>
-                </>
-              ) : (
-                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>
-                  No evaluation history recorded for this turn.
-                </div>
-              )}
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px' }}>Request Prompt:</div>
+              <pre style={{ background: 'var(--bg-primary)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-main)', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
+                {currentDebugLog.requestPrompt}
+              </pre>
             </div>
 
-            {/* Modal Footer */}
-            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-subtle)', textAlign: 'right', background: 'var(--bg-primary)' }}>
-              <button
-                onClick={() => setShowDebugModal(false)}
-                style={{
-                  padding: '0.55rem 1.25rem',
-                  background: 'var(--accent-mint)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                Close Debug Window
-              </button>
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px' }}>Raw Gemini JSON Response:</div>
+              <pre style={{ background: 'var(--bg-primary)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--accent-mint)', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
+                {currentDebugLog.rawResponseText}
+              </pre>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }
