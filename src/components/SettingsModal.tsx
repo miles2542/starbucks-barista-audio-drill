@@ -465,11 +465,11 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
             <RotateCcw size={18} /> Cloud Auto-Sync
           </h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-            Sync across devices seamlessly using a 6-character code.
+            Enter any custom 6-character code (or generate one) on both devices to auto-sync progress seamlessly.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <input 
             type="text" 
             value={syncCode} 
@@ -477,6 +477,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
             placeholder="e.g. SBX999"
             style={{
               flex: 1,
+              minWidth: '130px',
               padding: '0.75rem 1rem',
               background: 'var(--bg-primary)',
               border: '1px solid var(--border-subtle)',
@@ -487,6 +488,28 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               textTransform: 'uppercase'
             }}
           />
+          <button
+            onClick={() => {
+              const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+              let rnd = '';
+              for (let i = 0; i < 6; i++) {
+                rnd += chars.charAt(Math.floor(Math.random() * chars.length));
+              }
+              setSyncCode(rnd);
+            }}
+            style={{
+              background: 'var(--bg-primary)',
+              color: 'var(--text-muted)',
+              border: '1px solid var(--border-subtle)',
+              padding: '0.75rem 1rem',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.82rem'
+            }}
+          >
+            Generate Random Code
+          </button>
           <button
             onClick={handleSaveSyncCode}
             style={{
