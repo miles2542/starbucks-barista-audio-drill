@@ -123,11 +123,27 @@ export class SRSEngine {
     return JSON.stringify(data, null, 2);
   }
 
-  static importJSON(json: string): boolean {
+  static exportSyncString(): string {
+    const data = this.loadAll();
+    return btoa(JSON.stringify(data));
+  }
+
+  static importJSON(input: string): boolean {
+    if (!input) return false;
+    let clean = input.trim();
     try {
-      const data = JSON.parse(json);
-      this.saveAll(data);
-      return true;
+      // Auto-detect base64 encoded strings from earlier QR exports (starting with ey... or non-JSON)
+      if (clean.startsWith('ey') || (!clean.startsWith('{') && !clean.startsWith('['))) {
+        try {
+          clean = atob(clean);
+        } catch (e) {}
+      }
+      const data = JSON.parse(clean);
+      if (data && typeof data === 'object') {
+        this.saveAll(data);
+        return true;
+      }
+      return false;
     } catch {
       return false;
     }
@@ -162,7 +178,6 @@ export class SRSEngine {
     return cleanCode;
   }
 
-  // Real Cloud Check 1: Register brand-new channel
   static async createNewSyncChannel(code: string): Promise<{ success: boolean; itemCount: number; message: string }> {
     localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
     const cleanCode = code.toUpperCase().trim();
@@ -197,7 +212,7 @@ export class SRSEngine {
       return {
         success: true,
         itemCount,
-        message: `Registered new sync channel '${cleanCode}' with ${itemCount} recipe items! Share the blobId URL: ${location} or your direct blobId if on another device.`
+        message: `Registered new sync channel '${cleanCode}' with ${itemCount} recipe items! Share code '${cleanCode}' (or direct blobId: ${blobId}) with your other device.`
       };
     } catch (e: any) {
       return {
@@ -208,7 +223,6 @@ export class SRSEngine {
     }
   }
 
-  // Real Cloud Check 2: Join existing channel (MUST exist on server)
   static async joinExistingSyncChannel(code: string): Promise<{ success: boolean; itemCount: number; message: string }> {
     localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
     const cleanCode = code.trim();
