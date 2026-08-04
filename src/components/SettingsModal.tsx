@@ -194,7 +194,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
           Your API key is stored locally in your browser and used only for recipe grading & voice synthesis.
         </p>
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="flex-col-mobile" style={{ display: 'flex', gap: '0.5rem' }}>
           <input
             type="password"
             value={apiKey}
@@ -237,7 +237,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
             Choose how the AI reads recipes and feedback aloud.
           </p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        <div className="flex-col-mobile" style={{ display: 'flex', gap: '0.75rem' }}>
           <button
             onClick={() => handleSaveTtsEngineMode('web')}
             style={{
@@ -303,7 +303,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+        <div className="flex-col-mobile" style={{ display: 'flex', gap: '0.75rem' }}>
           <button
             onClick={() => handleSaveModelConfig('gemini-3.5-flash-lite', thinkingLevel)}
             style={{
@@ -388,7 +388,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
           <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <Cpu size={14} /> Thinking Level / Reasoning Budget ({selectedModel})
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+          <div className="flex-col-mobile" style={{ display: 'flex', gap: '0.5rem' }}>
             <button
               onClick={() => handleSaveModelConfig(selectedModel, 'OFF')}
               style={{
@@ -480,7 +480,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        <div className="flex-col-mobile" style={{ display: 'flex', gap: '0.75rem' }}>
           <button 
             onClick={handleExport}
             style={{
@@ -604,7 +604,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
         </div>
 
         {/* Explicit Action Buttons: Create New vs Join Existing */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        <div className="flex-col-mobile" style={{ display: 'flex', gap: '0.75rem' }}>
           <button
             onClick={() => handleCreateNewChannel(false)}
             disabled={isConnectingCloud}

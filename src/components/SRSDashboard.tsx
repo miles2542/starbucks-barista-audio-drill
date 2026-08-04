@@ -272,7 +272,7 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
       </div>
 
       {/* Individual Recipe SRS Table */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="card srs-table-container hidden-mobile" style={{ padding: 0 }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
             <thead>
@@ -373,6 +373,69 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Card View for SRS Data */}
+      <div className="srs-card-view hidden-desktop">
+        {filteredItems.map(g => (
+          <div key={g.recipe.id} className="card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#FFF' }}>{g.displayName}</h3>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Last: {formatRelativeTime(g.lastTimestamp)}</div>
+              </div>
+              <span
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  background: g.type === 'hot' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                  color: g.type === 'hot' ? '#EF4444' : '#3B82F6',
+                }}
+              >
+                {g.type.toUpperCase()}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '0.75rem', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>ACCURACY</span>
+                <span style={{ fontWeight: 800, color: g.passRate >= 80 ? 'var(--accent-mint)' : '#FFF' }}>
+                  {g.totalReviews > 0 ? `${g.passRate}%` : '—'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>STATUS</span>
+                <span style={{ 
+                  fontWeight: 800, 
+                  color: g.masteryStatus === 'Mastered' ? 'var(--accent-mint)' : g.masteryStatus === 'Learning' ? '#3B82F6' : 'var(--status-fail)' 
+                }}>
+                  {g.masteryStatus}
+                </span>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 700 }}>
+                <span style={{ color: g.confidenceScore >= 75 ? 'var(--accent-mint)' : g.confidenceScore >= 50 ? '#F59E0B' : 'var(--status-fail)' }}>
+                  Confidence: {g.confidenceScore}%
+                </span>
+                <span style={{ color: 'var(--text-muted)' }}>{g.totalReviews} reviews</span>
+              </div>
+              <div style={{ width: '100%', height: '6px', background: 'var(--bg-primary)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${g.confidenceScore}%`,
+                    height: '100%',
+                    background: g.confidenceScore >= 75 ? 'var(--accent-mint)' : g.confidenceScore >= 50 ? '#F59E0B' : 'var(--status-fail)',
+                    borderRadius: '3px'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
     </div>

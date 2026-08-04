@@ -21,6 +21,25 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Nordic Obsidian Design System Interactive Base */
+button, select, input {
+  font-family: inherit;
+}
+
+button:not(:disabled), select, .touch-target {
+  min-height: 44px;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+button:not(:disabled):active, .touch-target:active {
+  transform: scale(0.97);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .card, .surface {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -63,4 +82,69 @@ body {
 
 .spin {
   animation: spin 1s linear infinite;
+}
+
+/* --- Responsive Utilities --- */
+/* Hide on Mobile (<768px) */
+@media (max-width: 767px) {
+  .hidden-mobile {
+    display: none !important;
+  }
+  .flex-col-mobile {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .full-width-mobile {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
+/* Hide on Desktop (>=768px) */
+@media (min-width: 768px) {
+  .hidden-desktop {
+    display: none !important;
+  }
+}
+
+/* App Layout adjustments for Bottom Nav */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  padding-bottom: 70px; /* Safe area for mobile nav */
+}
+
+@media (min-width: 768px) {
+  .app-container {
+    padding-bottom: 0; /* No bottom nav on desktop */
+  }
+}
+
+/* SRS Dashboard responsive table */
+.srs-table-container {
+  overflow-x: auto;
+}
+
+.srs-card-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Main Layout adjustments */
+.main-content {
+  flex: 1;
+  padding: 1.5rem 1rem;
+  max-width: 780px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  .main-content {
+    padding: 1rem 0.75rem;
+  }
 }

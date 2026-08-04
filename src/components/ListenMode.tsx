@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Recipe } from '../types/recipe';
-import { speakTextGemini, stopSpeech } from '../services/audioEngine';
-import { Play, Square, FastForward, Volume2, Coffee } from 'lucide-react';
+import { speakTextGemini, speakTextWeb, stopSpeech } from '../services/audioEngine';
+import { Play, Square, FastForward, Volume2, Coffee, BookOpen } from 'lucide-react';
 
 interface ListenModeProps {
   recipe: Recipe | null;
@@ -15,6 +15,7 @@ export function ListenMode({ recipe, recipes, onSelectRecipe }: ListenModeProps)
   const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null);
 
   const apiKey = localStorage.getItem('gemini_api_key') || '';
+  const ttsEngineMode = localStorage.getItem('tts_engine_mode') || 'web';
 
   useEffect(() => {
     return () => stopSpeech();
@@ -26,8 +27,14 @@ export function ListenMode({ recipe, recipes, onSelectRecipe }: ListenModeProps)
     
     const text = `${recipe.name}. ${recipe.steps.steamMilk}. ${recipe.steps.queueShots}. ${recipe.steps.pumpSyrup}. ${recipe.steps.finish}.`;
 
-    // Start playing audio with Gemini 3.1 TTS
-    const isGeminiAudio = await speakTextGemini(text, apiKey, speed);
+    let isGeminiAudio = false;
+    
+    // Honor TTS voice engine setting
+    if (ttsEngineMode === 'hybrid' && apiKey) {
+      isGeminiAudio = await speakTextGemini(text, apiKey, speed);
+    } else {
+      speakTextWeb(text, speed);
+    }
 
     // Visual step sequence highlighting
     setActiveStepIndex(0);
@@ -90,8 +97,8 @@ export function ListenMode({ recipe, recipes, onSelectRecipe }: ListenModeProps)
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-mint)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-              GEMINI 3.1 AI READ-ALOUD DRILL
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-mint)', letterSpacing: '1px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <BookOpen size={14} /> RECIPE REFERENCE & AUDIO
             </span>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '4px 0 0 0', color: '#FFF' }}>
               {recipe.name}
@@ -105,7 +112,7 @@ export function ListenMode({ recipe, recipes, onSelectRecipe }: ListenModeProps)
         </div>
 
         {/* Audio Controls */}
-        <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', background: 'var(--bg-primary)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+        <div className="flex-col-mobile" style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', background: 'var(--bg-primary)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
           <button
             onClick={handlePlay}
             disabled={isPlaying}
@@ -113,6 +120,7 @@ export function ListenMode({ recipe, recipes, onSelectRecipe }: ListenModeProps)
               padding: '0.6rem 1.2rem',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '0.5rem',
               background: isPlaying ? 'var(--border-subtle)' : 'var(--accent-mint)',
               color: 'white',
@@ -123,7 +131,7 @@ export function ListenMode({ recipe, recipes, onSelectRecipe }: ListenModeProps)
             }}
           >
             {isPlaying ? <Volume2 size={18} className="spin" /> : <Play size={18} />}
-            {isPlaying ? 'Reading AI Voice...' : 'Play Gemini 3.1 TTS'}
+            {isPlaying ? 'Reading Aloud...' : 'Listen to Recipe'}
           </button>
 
           <button
@@ -133,6 +141,7 @@ export function ListenMode({ recipe, recipes, onSelectRecipe }: ListenModeProps)
               padding: '0.6rem 1rem',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '0.5rem',
               border: '1px solid var(--border-subtle)',
               background: 'transparent',

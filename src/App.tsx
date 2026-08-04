@@ -3,7 +3,6 @@ import { Navbar } from './components/Navbar';
 import { ListenMode } from './components/ListenMode';
 import { QuizMode } from './components/QuizMode';
 import { SRSDashboard } from './components/SRSDashboard';
-import { RecipeManager } from './components/RecipeManager';
 import { SettingsModal } from './components/SettingsModal';
 import type { Recipe } from './types/recipe';
 import { SRSEngine } from './services/srsEngine';
@@ -46,11 +45,6 @@ function App() {
 
   const dueCount = SRSEngine.getDueItems(recipes).length;
 
-  const handleSelectRecipe = (r: Recipe) => {
-    setSelectedRecipe(r);
-    setActiveTab('listen');
-  };
-
   const handleResetRecipes = () => {
     setRecipes(initialRecipes as Recipe[]);
     localStorage.setItem('starbucks_recipes_v5', JSON.stringify(initialRecipes));
@@ -61,14 +55,13 @@ function App() {
   const commitText = typeof __GIT_COMMIT_HASH__ !== 'undefined' ? __GIT_COMMIT_HASH__ : 'dev';
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)' }}>
+    <div className="app-container">
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} dueCount={dueCount} />
       
-      <main style={{ flex: 1, padding: '1.5rem 1rem', maxWidth: '780px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
-        {activeTab === 'listen' && <ListenMode recipe={selectedRecipe || recipes[0]} recipes={recipes} onSelectRecipe={setSelectedRecipe} />}
+      <main className="main-content">
         {activeTab === 'quiz' && <QuizMode recipes={recipes} onComplete={() => setActiveTab('recipes')} />}
         {activeTab === 'srs' && <SRSDashboard recipes={recipes} />}
-        {activeTab === 'recipes' && <RecipeManager recipes={recipes} setRecipes={setRecipes} onSelect={handleSelectRecipe} onReset={handleResetRecipes} />}
+        {activeTab === 'recipes' && <ListenMode recipe={selectedRecipe || recipes[0]} recipes={recipes} onSelectRecipe={setSelectedRecipe} />}
         {activeTab === 'settings' && <SettingsModal onResetRecipes={handleResetRecipes} />}
       </main>
 

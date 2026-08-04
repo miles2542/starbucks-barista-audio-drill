@@ -395,7 +395,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-mint)', letterSpacing: '1px', textTransform: 'uppercase' }}>
           STARBUCKS DRILL {autoAdvanceMode === 'handsfree' ? '• AUTO MODE' : '• MANUAL MODE'}
         </span>
-        <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '4px 0 0 0', color: '#FFF' }}>
+        <h1 style={{ fontSize: 'clamp(1.1rem, 4.5vw, 1.5rem)', fontWeight: 800, margin: '4px 0 0 0', color: '#FFF' }}>
           Recite: {currentRecipe.name}
         </h1>
       </div>
@@ -424,8 +424,8 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
             onClick={handleToggleListening}
             disabled={isGrading}
             style={{
-              width: '88px',
-              height: '88px',
+              width: 'clamp(70px, 20vw, 95px)',
+              height: 'clamp(70px, 20vw, 95px)',
               borderRadius: '50%',
               background: isListening ? 'var(--status-fail)' : 'var(--accent-mint)',
               color: 'white',
@@ -625,7 +625,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
         <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Sliders size={14} /> MANUAL OVERRIDE (IF OFF-LINE OR TESTING)
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div className="flex-col-mobile" style={{ display: 'flex', gap: '0.75rem' }}>
           <button
             onClick={() => {
               const allIds = recipes.map(r => r.id);
