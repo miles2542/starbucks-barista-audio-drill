@@ -12,6 +12,7 @@ export interface WeightData {
 
 export class SRSEngine {
   private static STORAGE_KEY = 'starbucks_srs_weights';
+  private static MASTER_INDEX_BLOB_ID = '019fcd83-3d4a-7924-a444-3f85f9cdc26c';
 
   static loadAll(): Record<string, WeightData> {
     const saved = localStorage.getItem(this.STORAGE_KEY);
@@ -132,7 +133,6 @@ export class SRSEngine {
     if (!input) return false;
     let clean = input.trim();
     try {
-      // Auto-detect base64 encoded strings from earlier QR exports (starting with ey... or non-JSON)
       if (clean.startsWith('ey') || (!clean.startsWith('{') && !clean.startsWith('['))) {
         try {
           clean = atob(clean);
@@ -167,17 +167,48 @@ export class SRSEngine {
     window.dispatchEvent(new Event('starbucks_srs_sync_updated'));
   }
 
-  static resolveBlobId(code: string): string {
-    const cleanCode = code.trim();
-    if (cleanCode.includes('jsonblob.com/')) {
-      const parts = cleanCode.split('/');
-      return parts[parts.length - 1];
+  // Master Index Cloud Registry helpers
+  private static async fetchMasterIndex(): Promise<Record<string, string>> {
+    try {
+      const res = await fetch(`https://jsonblob.com/api/jsonBlob/${this.MASTER_INDEX_BLOB_ID}`, { cache: 'no-cache' });
+      if (!res.ok) return {};
+      return await res.json();
+    } catch (e) {
+      console.error('Failed to fetch Master Index', e);
+      return {};
     }
-    const mapped = localStorage.getItem(`starbucks_srs_blob_${cleanCode.toUpperCase()}`);
-    if (mapped) return mapped;
-    return cleanCode;
   }
 
+  private static async updateMasterIndex(code: string, blobId: string): Promise<boolean> {
+    try {
+      const index = await this.fetchMasterIndex();
+      index[code.toUpperCase()] = blobId;
+      const res = await fetch(`https://jsonblob.com/api/jsonBlob/${this.MASTER_INDEX_BLOB_ID}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(index)
+      });
+      return res.ok;
+    } catch (e) {
+      console.error('Failed to update Master Index', e);
+      return false;
+    }
+  }
+
+  private static async resolveBlobIdFromCode(code: string): Promise<string | null> {
+    const clean = code.trim();
+    if (clean.length > 20 || clean.includes('/')) {
+      const parts = clean.split('/');
+      return parts[parts.length - 1];
+    }
+    const localMapped = localStorage.getItem(`starbucks_srs_blob_${clean.toUpperCase()}`);
+    if (localMapped) return localMapped;
+
+    const masterIndex = await this.fetchMasterIndex();
+    return masterIndex[clean.toUpperCase()] || null;
+  }
+
+  // Real Cloud Check 1: Register brand-new channel
   static async createNewSyncChannel(code: string): Promise<{ success: boolean; itemCount: number; message: string }> {
     localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
     const cleanCode = code.toUpperCase().trim();
@@ -186,6 +217,15 @@ export class SRSEngine {
     }
 
     try {
+      const existingBlobId = await this.resolveBlobIdFromCode(cleanCode);
+      if (existingBlobId) {
+        return {
+          success: false,
+          itemCount: 0,
+          message: `Sync channel '${cleanCode}' ALREADY EXISTS on cloud server! Click 'Join Existing Channel' on your secondary device to connect.`
+        };
+      }
+
       const all = this.loadAll();
       const res = await fetch(`https://jsonblob.com/api/jsonBlob`, {
         method: 'POST',
@@ -193,26 +233,23 @@ export class SRSEngine {
         body: JSON.stringify(all),
       });
       
-      if (!res.ok) {
-        throw new Error('Failed to create jsonBlob');
-      }
+      if (!res.ok) throw new Error('Failed to create cloud storage blob');
 
       const location = res.headers.get('Location');
-      if (!location) {
-        throw new Error('No Location header returned from jsonBlob');
-      }
+      if (!location) throw new Error('No Location header returned from cloud server');
 
       const parts = location.split('/');
       const blobId = parts[parts.length - 1];
       
       localStorage.setItem(`starbucks_srs_blob_${cleanCode}`, blobId);
+      await this.updateMasterIndex(cleanCode, blobId);
       this.setSyncCode(cleanCode);
       
       const itemCount = Object.keys(all).length;
       return {
         success: true,
         itemCount,
-        message: `Registered new sync channel '${cleanCode}' with ${itemCount} recipe items! Share code '${cleanCode}' (or direct blobId: ${blobId}) with your other device.`
+        message: `Registered new sync channel '${cleanCode}' with ${itemCount} recipe items! Enter code '${cleanCode}' on your other device and click 'Join Existing Channel'.`
       };
     } catch (e: any) {
       return {
@@ -223,35 +260,44 @@ export class SRSEngine {
     }
   }
 
+  // Real Cloud Check 2: Join existing channel (MUST exist on server)
   static async joinExistingSyncChannel(code: string): Promise<{ success: boolean; itemCount: number; message: string }> {
     localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
-    const cleanCode = code.trim();
+    const cleanCode = code.toUpperCase().trim();
     if (!cleanCode || cleanCode.length < 4) {
       return { success: false, itemCount: 0, message: 'Sync code must be at least 4 characters long.' };
     }
 
     try {
-      const blobId = this.resolveBlobId(cleanCode);
+      const blobId = await this.resolveBlobIdFromCode(cleanCode);
+      if (!blobId) {
+        return {
+          success: false,
+          itemCount: 0,
+          message: `Channel '${cleanCode}' NOT FOUND on cloud server! Please verify the code or click 'Create New Channel' on your primary device first.`
+        };
+      }
+
       const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, { cache: 'no-cache' });
-      
       if (res.status === 404 || !res.ok) {
         return {
           success: false,
           itemCount: 0,
-          message: `Channel '${cleanCode}' NOT FOUND on cloud server! Please verify the code/URL or click 'Create New Channel' on your primary device first.`
+          message: `Channel '${cleanCode}' data blob not found on cloud server. Please recreate the channel on your primary device.`
         };
       }
 
       const remoteAll: Record<string, WeightData> = await res.json();
       const itemCount = Object.keys(remoteAll).length;
 
+      localStorage.setItem(`starbucks_srs_blob_${cleanCode}`, blobId);
       this.setSyncCode(cleanCode);
       await this.pullSync();
 
       return {
         success: true,
         itemCount,
-        message: `Successfully connected to active channel! Downloaded and merged ${itemCount} recipe items from cloud.`
+        message: `Successfully connected to active channel '${cleanCode}'! Downloaded and merged ${itemCount} recipe items from cloud.`
       };
     } catch (e: any) {
       return {
@@ -265,7 +311,9 @@ export class SRSEngine {
   static async pushSync() {
     const code = this.getSyncCode();
     if (!code) return;
-    const blobId = this.resolveBlobId(code);
+    const blobId = await this.resolveBlobIdFromCode(code);
+    if (!blobId) return;
+
     const all = this.loadAll();
     try {
       await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
@@ -281,7 +329,9 @@ export class SRSEngine {
   static async pullSync() {
     const code = this.getSyncCode();
     if (!code) return;
-    const blobId = this.resolveBlobId(code);
+    const blobId = await this.resolveBlobIdFromCode(code);
+    if (!blobId) return;
+
     try {
       const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, { cache: 'no-cache' });
       if (!res.ok) return;
