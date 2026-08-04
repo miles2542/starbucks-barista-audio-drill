@@ -1,21 +1,23 @@
+import type { Recipe } from '../types/recipe';
+
 export interface WeightData {
   id: string;
-  weight: number;                 // Selection probability weight (10 to 250, default 100)
-  correctCount: number;           // Lifetime correct counter
-  incorrectCount: number;         // Lifetime incorrect counter
-  turnsSinceLastGraded: number;   // Turns since last graded encounter
-  lastGradedTimestamp?: number;   // Epoch timestamp ms of last graded encounter
-  lastSpeedMs?: number;           // Time taken in ms for the drill response
+  weight: number;
+  correctCount: number;
+  incorrectCount: number;
+  turnsSinceLastGraded: number;
+  lastGradedTimestamp?: number;
+  lastSpeedMs?: number;
 }
 
 export class SRSEngine {
-  private static STORAGE_KEY = 'starbucks_srs_weights_v3';
+  private static STORAGE_KEY = 'starbucks_srs_weights';
 
   static loadAll(): Record<string, WeightData> {
-    const data = localStorage.getItem(this.STORAGE_KEY);
-    if (!data) return {};
+    const saved = localStorage.getItem(this.STORAGE_KEY);
+    if (!saved) return {};
     try {
-      return JSON.parse(data);
+      return JSON.parse(saved);
     } catch {
       return {};
     }
@@ -25,113 +27,103 @@ export class SRSEngine {
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
   }
 
-  static updateItem(id: string, pass: boolean, allRecipeIds: string[], speedMs?: number): WeightData {
+  static updateItem(id: string, pass: boolean, allRecipeIds: string[], speedMs?: number) {
     const all = this.loadAll();
-    
-    // Ensure all recipes exist in state
-    allRecipeIds.forEach(recipeId => {
-      if (!all[recipeId]) {
-        all[recipeId] = {
-          id: recipeId,
+
+    allRecipeIds.forEach(rid => {
+      if (!all[rid]) {
+        all[rid] = {
+          id: rid,
           weight: 100,
           correctCount: 0,
           incorrectCount: 0,
-          turnsSinceLastGraded: 0,
+          turnsSinceLastGraded: 0
         };
       }
     });
 
-    const target = all[id];
-    target.lastGradedTimestamp = Date.now();
-    if (speedMs) {
-      target.lastSpeedMs = speedMs;
-    }
+    const item = all[id] || {
+      id,
+      weight: 100,
+      correctCount: 0,
+      incorrectCount: 0,
+      turnsSinceLastGraded: 0
+    };
 
     if (pass) {
-      target.correctCount += 1;
-      // Fast adaptive learning rate: PASS drops weight by -40 (minimum 10)
-      target.weight = Math.max(10, target.weight - 40);
+      item.weight = Math.max(10, Math.round(item.weight * 0.65));
+      item.correctCount = (item.correctCount || 0) + 1;
     } else {
-      target.incorrectCount += 1;
-      // FAIL pushes weight up by +60 (maximum 250)
-      target.weight = Math.min(250, target.weight + 60);
+      item.weight = Math.min(250, Math.round(item.weight * 2.2));
+      item.incorrectCount = (item.incorrectCount || 0) + 1;
     }
 
-    // Reset target's turns since last graded, and increment all other recipes' turn counters
-    target.turnsSinceLastGraded = 0;
-    allRecipeIds.forEach(recipeId => {
-      if (recipeId !== id && all[recipeId]) {
-        all[recipeId].turnsSinceLastGraded += 1;
+    item.turnsSinceLastGraded = 0;
+    item.lastGradedTimestamp = Date.now();
+    if (speedMs) item.lastSpeedMs = speedMs;
+
+    allRecipeIds.forEach(rid => {
+      if (rid !== id && all[rid]) {
+        all[rid].turnsSinceLastGraded += 1;
+        if (all[rid].turnsSinceLastGraded >= 3 && all[rid].weight > 35) {
+          all[rid].weight = Math.min(250, Math.round(all[rid].weight * 1.08));
+        }
       }
     });
 
+    all[id] = item;
     this.saveAll(all);
-    this.pushSync();
-    return target;
+
+    if (this.getSyncCode()) {
+      this.pushSync();
+    }
   }
 
-  static getNextRecipe(recipes: any[], currentRecipeId?: string): any {
+  static getNextRecipe(recipes: Recipe[], excludeId?: string): Recipe | null {
     if (!recipes || recipes.length === 0) return null;
-    if (recipes.length === 1) return recipes[0];
 
     const all = this.loadAll();
-    const recipeIds = recipes.map(r => r.id);
+    const available = recipes.filter(r => r.id !== excludeId);
+    const pool = available.length > 0 ? available : recipes;
 
-    // Dynamic Forced Review Cap scaling with total recipe count (e.g. 6 recipes -> 9 turns, 18 recipes -> 27 turns)
-    const maxTurnsWithoutReview = Math.max(8, Math.round(recipes.length * 1.5));
-
-    // Ensure all items are initialized
-    recipeIds.forEach(id => {
-      if (!all[id]) {
-        all[id] = { id, weight: 100, correctCount: 0, incorrectCount: 0, turnsSinceLastGraded: 0 };
-      }
-    });
-
-    // Check for DYNAMIC FORCED REVIEW items
-    const forcedItems = recipes.filter(r => {
+    const itemsWithWeights = pool.map(r => {
       const data = all[r.id];
-      return data && data.turnsSinceLastGraded >= maxTurnsWithoutReview && r.id !== currentRecipeId;
+      const weight = data ? data.weight : 100;
+      return { recipe: r, weight };
     });
 
-    if (forcedItems.length > 0) {
-      // Pick highest turn count forced item
-      forcedItems.sort((a, b) => (all[b.id]?.turnsSinceLastGraded || 0) - (all[a.id]?.turnsSinceLastGraded || 0));
-      return forcedItems[0];
+    const totalWeight = itemsWithWeights.reduce((acc, item) => acc + item.weight, 0);
+    if (totalWeight <= 0) {
+      return pool[Math.floor(Math.random() * pool.length)];
     }
 
-    // Weighted Probability Sampler
-    const candidates = recipes.filter(r => r.id !== currentRecipeId);
-    let totalWeight = 0;
-    const weightsMap = candidates.map(r => {
-      const data = all[r.id];
-      const w = data ? data.weight : 100;
-      totalWeight += w;
-      return { recipe: r, weight: w };
-    });
-
     let random = Math.random() * totalWeight;
-    for (const item of weightsMap) {
+    for (const item of itemsWithWeights) {
       if (random < item.weight) {
         return item.recipe;
       }
       random -= item.weight;
     }
 
-    return candidates[0] || recipes[0];
+    return pool[0];
   }
 
-  static getDueItems(recipes: any[]): any[] {
-    return recipes;
-  }
-
-  static exportSyncString(): string {
+  static getDueItems(recipes: Recipe[]): Recipe[] {
     const all = this.loadAll();
-    return btoa(JSON.stringify(all));
+    return recipes.filter(r => {
+      const item = all[r.id];
+      if (!item) return true;
+      return item.weight > 35;
+    });
   }
 
-  static importSyncString(encoded: string): boolean {
+  static exportJSON(): string {
+    const data = this.loadAll();
+    return JSON.stringify(data, null, 2);
+  }
+
+  static importJSON(json: string): boolean {
     try {
-      const json = atob(encoded);
       const data = JSON.parse(json);
       this.saveAll(data);
       return true;
@@ -149,6 +141,59 @@ export class SRSEngine {
       localStorage.removeItem('starbucks_srs_sync_code');
     } else {
       localStorage.setItem('starbucks_srs_sync_code', code);
+    }
+  }
+
+  static disconnectSyncCode() {
+    localStorage.removeItem('starbucks_srs_sync_code');
+    window.dispatchEvent(new Event('starbucks_srs_sync_updated'));
+  }
+
+  static async validateAndConnectSyncCode(code: string): Promise<{ success: boolean; isNewChannel: boolean; itemCount: number; message: string }> {
+    const cleanCode = code.toUpperCase().trim();
+    if (!cleanCode || cleanCode.length < 4) {
+      return { success: false, isNewChannel: false, itemCount: 0, message: 'Sync code must be at least 4 characters long.' };
+    }
+
+    try {
+      const res = await fetch(`https://kvdb.io/starbucks_srs_v1/${cleanCode}`);
+      if (res.status === 404) {
+        // Register new channel by uploading current local snapshot
+        this.setSyncCode(cleanCode);
+        await this.pushSync();
+        return {
+          success: true,
+          isNewChannel: true,
+          itemCount: Object.keys(this.loadAll()).length,
+          message: `Created & registered new cloud sync channel '${cleanCode}'!`
+        };
+      } else if (!res.ok) {
+        return {
+          success: false,
+          isNewChannel: false,
+          itemCount: 0,
+          message: `Cloud server error (${res.status} ${res.statusText}). Please try again later.`
+        };
+      } else {
+        // Existing channel found: pull and merge!
+        const remoteAll: Record<string, WeightData> = await res.json();
+        this.setSyncCode(cleanCode);
+        await this.pullSync();
+        const itemCount = Object.keys(remoteAll).length;
+        return {
+          success: true,
+          isNewChannel: false,
+          itemCount,
+          message: `Successfully connected to cloud channel '${cleanCode}'! Found ${itemCount} active recipe items.`
+        };
+      }
+    } catch (e: any) {
+      return {
+        success: false,
+        isNewChannel: false,
+        itemCount: 0,
+        message: `Network error connecting to cloud server: ${e?.message || 'Unable to reach kvdb.io'}`
+      };
     }
   }
 

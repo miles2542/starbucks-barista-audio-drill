@@ -2,10 +2,17 @@ import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { SRSEngine } from '../services/srsEngine';
 import { isModelExhausted } from '../services/geminiGrader';
-import { Key, QrCode, Download, Upload, RotateCcw, ExternalLink, Cpu, Brain, CheckCircle, Volume2 } from 'lucide-react';
+import { Key, QrCode, Download, Upload, RotateCcw, Cpu, Brain, CheckCircle, Volume2, Unlink, Loader, AlertTriangle, Info, X } from 'lucide-react';
 
 interface SettingsModalProps {
   onResetRecipes?: () => void;
+}
+
+interface CustomModalNotice {
+  title: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
+  onReload?: boolean;
 }
 
 export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
@@ -15,10 +22,16 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
   const [ttsEngineMode, setTtsEngineMode] = useState<'web' | 'hybrid'>(() => (localStorage.getItem('tts_engine_mode') as 'web' | 'hybrid') || 'web');
   const [syncString, setSyncString] = useState('');
   const [syncCode, setSyncCode] = useState(() => SRSEngine.getSyncCode() || '');
+  const [modalNotice, setModalNotice] = useState<CustomModalNotice | null>(null);
+  const [isConnectingCloud, setIsConnectingCloud] = useState(false);
   
   const handleSaveKey = () => {
     localStorage.setItem('gemini_api_key', apiKey.trim());
-    alert(apiKey.trim() ? 'Gemini API key saved successfully!' : 'API key cleared.');
+    setModalNotice({
+      title: 'Gemini API Key',
+      message: apiKey.trim() ? 'Gemini API key saved successfully!' : 'API key cleared.',
+      type: 'success'
+    });
   };
 
   const handleSaveModelConfig = (model: string, thinking: string) => {
@@ -34,43 +47,96 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
   };
 
   const handleExport = () => {
-    setSyncString(SRSEngine.exportSyncString());
+    setSyncString(SRSEngine.exportJSON());
   };
 
   const handleImport = () => {
-    const data = prompt('Paste sync string from another device:');
+    const data = prompt('Paste sync JSON string from another device:');
     if (data) {
-      if (SRSEngine.importSyncString(data)) {
-        alert('SRS progress imported successfully!');
-        window.location.reload();
+      if (SRSEngine.importJSON(data)) {
+        setModalNotice({
+          title: 'Import Successful',
+          message: 'SRS progress imported successfully from JSON snapshot!',
+          type: 'success',
+          onReload: true
+        });
       } else {
-        alert('Invalid sync string format.');
+        setModalNotice({
+          title: 'Import Failed',
+          message: 'Invalid sync JSON string format.',
+          type: 'error'
+        });
       }
     }
   };
 
-  const handleSaveSyncCode = () => {
-    const code = syncCode.trim();
-    SRSEngine.setSyncCode(code);
-    if (code) {
-      SRSEngine.pullSync();
-      alert(`Auto-Sync enabled with code: ${code}`);
+  const handleSaveSyncCode = async () => {
+    const code = syncCode.trim().toUpperCase();
+    if (!code || code.length < 4) {
+      setModalNotice({
+        title: 'Invalid Sync Code',
+        message: 'Sync code must be at least 4 characters long (e.g. SBX999 or MILES1).',
+        type: 'error'
+      });
+      return;
+    }
+
+    setIsConnectingCloud(true);
+    const result = await SRSEngine.validateAndConnectSyncCode(code);
+    setIsConnectingCloud(false);
+
+    if (result.success) {
+      setSyncCode(code);
+      setModalNotice({
+        title: result.isNewChannel ? 'New Channel Created' : 'Connected to Cloud Channel',
+        message: result.message,
+        type: 'success'
+      });
     } else {
-      alert('Auto-Sync disabled.');
+      setModalNotice({
+        title: 'Connection Failed',
+        message: result.message,
+        type: 'error'
+      });
     }
   };
 
-  const handleManualSync = () => {
-    SRSEngine.pushSync();
-    SRSEngine.pullSync().then(() => alert('Manual sync triggered!'));
+  const handleDisconnectSyncCode = () => {
+    SRSEngine.disconnectSyncCode();
+    setSyncCode('');
+    setModalNotice({
+      title: 'Sync Code Disconnected',
+      message: 'Auto-sync channel has been disconnected. Your local data remains safe.',
+      type: 'info'
+    });
+  };
+
+  const handleManualSync = async () => {
+    setIsConnectingCloud(true);
+    await SRSEngine.pushSync();
+    await SRSEngine.pullSync();
+    setIsConnectingCloud(false);
+    setModalNotice({
+      title: 'Sync Complete',
+      message: `Latest progress synced with cloud channel '${SRSEngine.getSyncCode()}'.`,
+      type: 'success'
+    });
   };
 
   const handleRevert = () => {
     if (SRSEngine.revertBackup()) {
-      alert('Reverted to last local backup!');
-      window.location.reload();
+      setModalNotice({
+        title: 'Reverted Local Backup',
+        message: 'Reverted to last local backup snapshot!',
+        type: 'success',
+        onReload: true
+      });
     } else {
-      alert('No backup found.');
+      setModalNotice({
+        title: 'No Backup Found',
+        message: 'No previous local backup snapshot found to revert.',
+        type: 'info'
+      });
     }
   };
 
@@ -78,36 +144,28 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div>
         <h1 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, color: '#FFF' }}>
-          Settings & Model Configuration
+          App Settings & Configuration
         </h1>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-          Configure AI API keys, Store Manager model selection, reasoning thinking levels, and cross-device sync.
+          Configure API credentials, model reasoning budget, voice engine, and cross-device sync.
         </p>
       </div>
 
-      {/* API Key Configuration */}
+      {/* Gemini API Key Section */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        <label style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Key size={16} /> Gemini API Key (AI Store Manager & TTS)
-        </label>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: '1.4' }}>
-          Get a free API key from{' '}
-          <a
-            href="https://aistudio.google.com/app/apikey"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'var(--accent-mint)', fontWeight: 700, textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-          >
-            Google AI Studio <ExternalLink size={12} />
-          </a>{' '}
-          and paste it below. Each trainee uses their own key.
+        <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Key size={18} /> Gemini API Key
+        </h3>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+          Your API key is stored locally in your browser and used only for recipe grading & voice synthesis.
         </p>
+
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <input 
-            type="password" 
-            value={apiKey} 
-            onChange={e => setApiKey(e.target.value)} 
-            placeholder="Paste your Gemini API key (AIzaSy...)"
+          <input
+            type="password"
+            value={apiKey}
+            onChange={e => setApiKey(e.target.value)}
+            placeholder="Paste your Gemini API key (e.g. AIzaSy...)"
             style={{
               flex: 1,
               padding: '0.75rem 1rem',
@@ -115,7 +173,6 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               border: '1px solid var(--border-subtle)',
               color: 'white',
               borderRadius: '6px',
-              fontFamily: 'monospace',
               fontSize: '0.9rem'
             }}
           />
@@ -147,7 +204,6 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
           </p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-          {/* Full Web Speech Synthesis */}
           <button
             onClick={() => handleSaveTtsEngineMode('web')}
             style={{
@@ -174,7 +230,6 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
             </div>
           </button>
 
-          {/* AI Hybrid */}
           <button
             onClick={() => handleSaveTtsEngineMode('hybrid')}
             style={{
@@ -193,33 +248,32 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
             <div style={{ fontWeight: 800, fontSize: '0.82rem', color: ttsEngineMode === 'hybrid' ? 'var(--accent-mint)' : '#FFF', display: 'flex', alignItems: 'center', gap: '4px' }}>
               {ttsEngineMode === 'hybrid' && <CheckCircle size={14} style={{ color: 'var(--accent-mint)' }} />} AI Hybrid (Gemini TTS)
             </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--accent-mint)', fontWeight: 700 }}>
-              Natural AI voice
+            <div style={{ fontSize: '0.7rem', color: '#F59E0B', fontWeight: 700 }}>
+              Ultra Natural AI Voice
             </div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-              Requires API key & network connection.
+              Uses Gemini 3.1 Flash TTS (requires API key & network).
             </div>
           </button>
         </div>
       </div>
 
-      {/* AI Model & Thinking Level Selector */}
+      {/* Model Selection & Thinking Level */}
       <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         <div>
           <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Cpu size={18} /> Store Manager Grader Model & Auto-Rotation
+            <Brain size={18} /> Grader Model & Thinking Level
           </h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-            If a model hits daily free tier limits (HTTP 429), the engine auto-rotates to 3.5 Flash-Lite to ensure continuous practice.
+            Select AI model tier. If a model hits daily free tier limits (HTTP 429), the engine auto-rotates to 3.5 Flash-Lite.
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-          {/* Gemini 3.5 Flash-Lite */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
           <button
             onClick={() => handleSaveModelConfig('gemini-3.5-flash-lite', thinkingLevel)}
             style={{
-              padding: '0.75rem',
+              padding: '0.85rem',
               borderRadius: '8px',
               border: selectedModel === 'gemini-3.5-flash-lite' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
               background: selectedModel === 'gemini-3.5-flash-lite' ? 'rgba(5, 150, 105, 0.12)' : 'var(--bg-primary)',
@@ -231,8 +285,8 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               gap: '4px'
             }}
           >
-            <div style={{ fontWeight: 800, fontSize: '0.82rem', color: selectedModel === 'gemini-3.5-flash-lite' ? 'var(--accent-mint)' : '#FFF', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <CheckCircle size={14} style={{ color: 'var(--accent-mint)' }} /> 3.5 Flash-Lite
+            <div style={{ fontWeight: 800, fontSize: '0.85rem', color: selectedModel === 'gemini-3.5-flash-lite' ? 'var(--accent-mint)' : '#FFF', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {selectedModel === 'gemini-3.5-flash-lite' && <CheckCircle size={14} style={{ color: 'var(--accent-mint)' }} />} 3.5 Flash-Lite
             </div>
             <div style={{ fontSize: '0.7rem', color: 'var(--accent-mint)', fontWeight: 700 }}>
               500 drills/day (Recommended)
@@ -242,11 +296,10 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
             </div>
           </button>
 
-          {/* Gemini 3.5 Flash */}
           <button
             onClick={() => handleSaveModelConfig('gemini-3.5-flash', thinkingLevel)}
             style={{
-              padding: '0.75rem',
+              padding: '0.85rem',
               borderRadius: '8px',
               border: selectedModel === 'gemini-3.5-flash' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
               background: selectedModel === 'gemini-3.5-flash' ? 'rgba(5, 150, 105, 0.12)' : 'var(--bg-primary)',
@@ -255,26 +308,24 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',
-              gap: '4px',
-              opacity: isModelExhausted('gemini-3.5-flash') ? 0.6 : 1
+              gap: '4px'
             }}
           >
-            <div style={{ fontWeight: 800, fontSize: '0.82rem', color: selectedModel === 'gemini-3.5-flash' ? 'var(--accent-mint)' : '#FFF' }}>
-              3.5 Flash (Fastest 3.9s)
+            <div style={{ fontWeight: 800, fontSize: '0.85rem', color: selectedModel === 'gemini-3.5-flash' ? 'var(--accent-mint)' : '#FFF', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {selectedModel === 'gemini-3.5-flash' && <CheckCircle size={14} style={{ color: 'var(--accent-mint)' }} />} 3.5 Flash (Fastest 3.9s)
             </div>
-            <div style={{ fontSize: '0.7rem', color: isModelExhausted('gemini-3.5-flash') ? '#EF4444' : '#F59E0B', fontWeight: 700 }}>
-              {isModelExhausted('gemini-3.5-flash') ? 'Quota Exhausted Today' : '20 drills/day (Capped)'}
+            <div style={{ fontSize: '0.7rem', color: '#F59E0B', fontWeight: 700 }}>
+              20 drills/day (Capped)
             </div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-              Auto-rotates to 3.5 Flash-Lite when 20 RPD cap hit.
+              {isModelExhausted('gemini-3.5-flash') ? 'Quota exhausted today. Auto-rotated to Lite.' : 'Auto-rotates to 3.5 Flash-Lite when 20 RPD cap hit.'}
             </div>
           </button>
 
-          {/* Gemini 3.6 Flash */}
           <button
             onClick={() => handleSaveModelConfig('gemini-3.6-flash', thinkingLevel)}
             style={{
-              padding: '0.75rem',
+              padding: '0.85rem',
               borderRadius: '8px',
               border: selectedModel === 'gemini-3.6-flash' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
               background: selectedModel === 'gemini-3.6-flash' ? 'rgba(5, 150, 105, 0.12)' : 'var(--bg-primary)',
@@ -283,38 +334,37 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',
-              gap: '4px',
-              opacity: isModelExhausted('gemini-3.6-flash') ? 0.6 : 1
+              gap: '4px'
             }}
           >
-            <div style={{ fontWeight: 800, fontSize: '0.82rem', color: selectedModel === 'gemini-3.6-flash' ? 'var(--accent-mint)' : '#FFF' }}>
-              3.6 Flash (Deepest)
+            <div style={{ fontWeight: 800, fontSize: '0.85rem', color: selectedModel === 'gemini-3.6-flash' ? 'var(--accent-mint)' : '#FFF', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {selectedModel === 'gemini-3.6-flash' && <CheckCircle size={14} style={{ color: 'var(--accent-mint)' }} />} 3.6 Flash (Deepest)
             </div>
-            <div style={{ fontSize: '0.7rem', color: isModelExhausted('gemini-3.6-flash') ? '#EF4444' : '#F59E0B', fontWeight: 700 }}>
-              {isModelExhausted('gemini-3.6-flash') ? 'Quota Exhausted Today' : '20 drills/day (Capped)'}
+            <div style={{ fontSize: '0.7rem', color: '#F59E0B', fontWeight: 700 }}>
+              20 drills/day (Capped)
             </div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-              Auto-rotates to 3.5 Flash-Lite when 20 RPD cap hit.
+              {isModelExhausted('gemini-3.6-flash') ? 'Quota exhausted today. Auto-rotated to Lite.' : 'Auto-rotates to 3.5 Flash-Lite when 20 RPD cap hit.'}
             </div>
           </button>
         </div>
 
-        {/* Dynamic Thinking Level Selector */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-          <label style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Brain size={16} style={{ color: 'var(--accent-mint)' }} /> Thinking Level / Reasoning Budget ({selectedModel})
-          </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+        {/* Reasoning Thinking Budget */}
+        <div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Cpu size={14} /> Thinking Level / Reasoning Budget ({selectedModel})
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
             <button
               onClick={() => handleSaveModelConfig(selectedModel, 'OFF')}
               style={{
-                padding: '0.65rem 0.75rem',
+                padding: '0.5rem',
                 borderRadius: '6px',
-                border: thinkingLevel === 'OFF' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
-                background: thinkingLevel === 'OFF' ? 'rgba(5, 150, 105, 0.15)' : 'var(--bg-primary)',
-                color: thinkingLevel === 'OFF' ? '#FFF' : 'var(--text-muted)',
-                fontWeight: 700,
+                border: thinkingLevel === 'OFF' ? '1px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
+                background: thinkingLevel === 'OFF' ? 'var(--accent-mint)' : 'var(--bg-primary)',
+                color: 'white',
                 fontSize: '0.8rem',
+                fontWeight: 700,
                 cursor: 'pointer'
               }}
             >
@@ -323,13 +373,13 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
             <button
               onClick={() => handleSaveModelConfig(selectedModel, 'LOW')}
               style={{
-                padding: '0.65rem 0.75rem',
+                padding: '0.5rem',
                 borderRadius: '6px',
-                border: thinkingLevel === 'LOW' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
-                background: thinkingLevel === 'LOW' ? 'rgba(5, 150, 105, 0.15)' : 'var(--bg-primary)',
-                color: thinkingLevel === 'LOW' ? '#FFF' : 'var(--text-muted)',
-                fontWeight: 700,
+                border: thinkingLevel === 'LOW' ? '1px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
+                background: thinkingLevel === 'LOW' ? 'var(--accent-mint)' : 'var(--bg-primary)',
+                color: 'white',
                 fontSize: '0.8rem',
+                fontWeight: 700,
                 cursor: 'pointer'
               }}
             >
@@ -338,13 +388,13 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
             <button
               onClick={() => handleSaveModelConfig(selectedModel, 'HIGH')}
               style={{
-                padding: '0.65rem 0.75rem',
+                padding: '0.5rem',
                 borderRadius: '6px',
-                border: thinkingLevel === 'HIGH' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
-                background: thinkingLevel === 'HIGH' ? 'rgba(5, 150, 105, 0.15)' : 'var(--bg-primary)',
-                color: thinkingLevel === 'HIGH' ? '#FFF' : 'var(--text-muted)',
-                fontWeight: 700,
+                border: thinkingLevel === 'HIGH' ? '1px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
+                background: thinkingLevel === 'HIGH' ? 'var(--accent-mint)' : 'var(--bg-primary)',
+                color: 'white',
                 fontSize: '0.8rem',
+                fontWeight: 700,
                 cursor: 'pointer'
               }}
             >
@@ -354,78 +404,82 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
         </div>
       </div>
 
-      {/* Reset Recipe Dataset */}
+      {/* Manual Reset Recipes Section */}
       {onResetRecipes && (
         <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#FFF' }}>Reset Recipes to Default Dataset</div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Overwrites local recipe state with standard 8 Starbucks training recipes.</div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#FFF' }}>
+              Reset Recipes to Default Dataset
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+              Overwrites local recipe state with standard 13 Starbucks training recipes.
+            </p>
           </div>
           <button
             onClick={onResetRecipes}
             style={{
-              padding: '0.6rem 1rem',
               background: 'transparent',
-              border: '1px solid var(--border-subtle)',
-              color: 'var(--accent-mint)',
+              color: 'var(--status-fail)',
+              border: '1px solid var(--status-fail)',
+              padding: '0.65rem 1.25rem',
               borderRadius: '6px',
-              fontSize: '0.85rem',
-              fontWeight: 600,
               cursor: 'pointer',
+              fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
             }}
           >
-            <RotateCcw size={14} /> Reset Recipes
+            <RotateCcw size={16} /> Reset Recipes
           </button>
         </div>
       )}
 
-      {/* Cross Device Sync */}
+      {/* Manual Snapshot Export / Import */}
       <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <QrCode size={18} /> Cross-Device Sync (PC ↔ Mobile)
-        </h3>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
-          Export your SRS progress to another device via QR code or text string.
-        </p>
+        <div>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <QrCode size={18} /> Manual Snapshot Sync (PC ↔ Mobile)
+          </h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+            Export your SRS progress to another device via QR code or text string.
+          </p>
+        </div>
 
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <button 
             onClick={handleExport}
             style={{
-              flex: 1,
+              padding: '0.75rem',
               background: 'var(--bg-primary)',
-              color: 'var(--text-main)',
+              color: 'white',
               border: '1px solid var(--border-subtle)',
-              padding: '0.75rem 1rem',
               borderRadius: '6px',
               cursor: 'pointer',
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px'
+              gap: '6px'
             }}
           >
             <Download size={16} /> Generate QR / Code
           </button>
-          <button
+
+          <button 
             onClick={handleImport}
             style={{
-              flex: 1,
+              padding: '0.75rem',
               background: 'var(--bg-primary)',
-              color: 'var(--text-main)',
+              color: 'white',
               border: '1px solid var(--border-subtle)',
-              padding: '0.75rem 1rem',
               borderRadius: '6px',
               cursor: 'pointer',
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px'
+              gap: '6px'
             }}
           >
             <Upload size={16} /> Import Code
@@ -458,7 +512,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
         )}
       </div>
 
-      {/* Auto Sync Config */}
+      {/* Cloud Auto-Sync Configuration */}
       <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div>
           <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -475,6 +529,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
             value={syncCode} 
             onChange={e => setSyncCode(e.target.value.toUpperCase().slice(0, 6))} 
             placeholder="e.g. SBX999"
+            disabled={isConnectingCloud}
             style={{
               flex: 1,
               minWidth: '130px',
@@ -497,13 +552,14 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               }
               setSyncCode(rnd);
             }}
+            disabled={isConnectingCloud}
             style={{
               background: 'var(--bg-primary)',
               color: 'var(--text-muted)',
               border: '1px solid var(--border-subtle)',
               padding: '0.75rem 1rem',
               borderRadius: '6px',
-              cursor: 'pointer',
+              cursor: isConnectingCloud ? 'not-allowed' : 'pointer',
               fontWeight: 600,
               fontSize: '0.82rem'
             }}
@@ -512,65 +568,164 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
           </button>
           <button
             onClick={handleSaveSyncCode}
+            disabled={isConnectingCloud}
             style={{
               background: 'var(--accent-mint)',
               color: 'white',
               border: 'none',
               padding: '0.75rem 1.5rem',
               borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: 700
+              cursor: isConnectingCloud ? 'not-allowed' : 'pointer',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}
           >
-            Save Code
+            {isConnectingCloud ? <Loader size={16} className="spin-animation" /> : 'Save Code'}
           </button>
         </div>
-        
+
         {SRSEngine.getSyncCode() && (
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{
-              background: 'rgba(5, 150, 105, 0.2)',
-              color: 'var(--accent-mint)',
-              padding: '4px 10px',
-              borderRadius: '12px',
-              fontSize: '0.75rem',
-              fontWeight: 800
-            }}>
-              Auto-Sync Enabled: {SRSEngine.getSyncCode()}
-            </span>
-            <button
-              onClick={handleManualSync}
-              style={{
-                background: 'var(--bg-primary)',
-                color: 'var(--text-main)',
-                border: '1px solid var(--border-subtle)',
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '0.85rem'
-              }}
-            >
-              Auto-Sync Now
-            </button>
-            <button
-              onClick={handleRevert}
-              style={{
-                background: 'rgba(239, 68, 68, 0.1)',
-                color: '#EF4444',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '0.85rem'
-              }}
-            >
-              Revert to Local Backup
-            </button>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(5, 150, 105, 0.08)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid rgba(5, 150, 105, 0.25)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+              <CheckCircle size={18} style={{ color: 'var(--accent-mint)', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#FFF' }}>
+                  Auto-Sync Channel Active: <span style={{ color: 'var(--accent-mint)', fontFamily: 'monospace' }}>{SRSEngine.getSyncCode()}</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Auto-syncs in background on drill complete or app focus.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                onClick={handleManualSync}
+                disabled={isConnectingCloud}
+                style={{
+                  background: 'var(--bg-primary)',
+                  color: 'white',
+                  border: '1px solid var(--border-subtle)',
+                  padding: '0.4rem 0.75rem',
+                  borderRadius: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Sync Now
+              </button>
+              
+              <button
+                onClick={handleDisconnectSyncCode}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  color: 'var(--status-fail)',
+                  border: '1px solid var(--status-fail)',
+                  padding: '0.4rem 0.75rem',
+                  borderRadius: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <Unlink size={14} /> Disconnect Code
+              </button>
+            </div>
           </div>
         )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
+          <button
+            onClick={handleRevert}
+            style={{
+              background: 'transparent',
+              color: 'var(--text-muted)',
+              border: 'none',
+              fontSize: '0.75rem',
+              cursor: 'pointer',
+              textDecoration: 'underline'
+            }}
+          >
+            Revert to Local Backup Snapshot
+          </button>
+        </div>
       </div>
+
+      {/* Custom Modal Notice Dialog (Replaces browser default alerts) */}
+      {modalNotice && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          padding: '1rem'
+        }}>
+          <div className="card" style={{ maxWidth: '420px', width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: `4px solid ${modalNotice.type === 'error' ? 'var(--status-fail)' : modalNotice.type === 'success' ? 'var(--accent-mint)' : '#3B82F6'}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {modalNotice.type === 'error' ? (
+                  <AlertTriangle size={22} style={{ color: 'var(--status-fail)' }} />
+                ) : modalNotice.type === 'success' ? (
+                  <CheckCircle size={22} style={{ color: 'var(--accent-mint)' }} />
+                ) : (
+                  <Info size={22} style={{ color: '#3B82F6' }} />
+                )}
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#FFF' }}>
+                  {modalNotice.title}
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  const reload = modalNotice.onReload;
+                  setModalNotice(null);
+                  if (reload) window.location.reload();
+                }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', margin: 0, lineHeight: '1.5' }}>
+              {modalNotice.message}
+            </p>
+
+            <button
+              onClick={() => {
+                const reload = modalNotice.onReload;
+                setModalNotice(null);
+                if (reload) window.location.reload();
+              }}
+              style={{
+                marginTop: '0.5rem',
+                padding: '0.65rem 1.25rem',
+                background: modalNotice.type === 'error' ? 'var(--status-fail)' : modalNotice.type === 'success' ? 'var(--accent-mint)' : '#3B82F6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                textAlign: 'center'
+              }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
