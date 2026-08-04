@@ -66,6 +66,7 @@ export class SRSEngine {
     });
 
     this.saveAll(all);
+    this.pushSync();
     return target;
   }
 
@@ -137,5 +138,84 @@ export class SRSEngine {
     } catch {
       return false;
     }
+  }
+
+  static getSyncCode(): string | null {
+    return localStorage.getItem('starbucks_srs_sync_code');
+  }
+
+  static setSyncCode(code: string) {
+    if (!code) {
+      localStorage.removeItem('starbucks_srs_sync_code');
+    } else {
+      localStorage.setItem('starbucks_srs_sync_code', code);
+    }
+  }
+
+  static async pushSync() {
+    const code = this.getSyncCode();
+    if (!code) return;
+    const all = this.loadAll();
+    try {
+      await fetch(`https://kvdb.io/starbucks_srs_v1/${code}`, {
+        method: 'POST',
+        body: JSON.stringify(all),
+      });
+    } catch (e) {
+      console.error('Failed to push sync', e);
+    }
+  }
+
+  static async pullSync() {
+    const code = this.getSyncCode();
+    if (!code) return;
+    try {
+      const res = await fetch(`https://kvdb.io/starbucks_srs_v1/${code}`);
+      if (!res.ok) return;
+      const remoteAll: Record<string, WeightData> = await res.json();
+      
+      const localAll = this.loadAll();
+      let changed = false;
+
+      for (const id in remoteAll) {
+        const remote = remoteAll[id];
+        const local = localAll[id];
+        if (!local || (remote.lastGradedTimestamp || 0) > (local.lastGradedTimestamp || 0)) {
+          localAll[id] = remote;
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
+        this.saveAll(localAll);
+        window.dispatchEvent(new Event('starbucks_srs_sync_updated'));
+      }
+    } catch (e) {
+      console.error('Failed to pull sync', e);
+    }
+  }
+
+  static revertBackup(): boolean {
+    const backup = localStorage.getItem('starbucks_srs_backup');
+    if (backup) {
+      localStorage.setItem(this.STORAGE_KEY, backup);
+      return true;
+    }
+    return false;
+  }
+
+  static initAutoSync() {
+    if (this.getSyncCode()) {
+      this.pullSync();
+    }
+    
+    window.addEventListener('focus', () => {
+      if (this.getSyncCode()) this.pullSync();
+    });
+
+    setInterval(() => {
+      if (this.getSyncCode()) this.pullSync();
+    }, 30000);
   }
 }

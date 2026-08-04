@@ -32,6 +32,18 @@ function App() {
     localStorage.setItem('starbucks_recipes_v5', JSON.stringify(recipes));
   }, [recipes]);
 
+  useEffect(() => {
+    SRSEngine.initAutoSync();
+    const handleSyncUpdate = () => {
+      // Trigger a re-render or handle UI updates if necessary.
+      // Currently, SRSEngine manages its own state and next drills fetch it directly.
+    };
+    window.addEventListener('starbucks_srs_sync_updated', handleSyncUpdate);
+    return () => {
+      window.removeEventListener('starbucks_srs_sync_updated', handleSyncUpdate);
+    };
+  }, []);
+
   const dueCount = SRSEngine.getDueItems(recipes).length;
 
   const handleSelectRecipe = (r: Recipe) => {

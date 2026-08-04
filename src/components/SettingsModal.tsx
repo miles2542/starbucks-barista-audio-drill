@@ -14,6 +14,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
   const [thinkingLevel, setThinkingLevel] = useState(() => localStorage.getItem('gemini_thinking_level') || 'HIGH');
   const [ttsEngineMode, setTtsEngineMode] = useState<'web' | 'hybrid'>(() => (localStorage.getItem('tts_engine_mode') as 'web' | 'hybrid') || 'web');
   const [syncString, setSyncString] = useState('');
+  const [syncCode, setSyncCode] = useState(() => SRSEngine.getSyncCode() || '');
   
   const handleSaveKey = () => {
     localStorage.setItem('gemini_api_key', apiKey.trim());
@@ -45,6 +46,31 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
       } else {
         alert('Invalid sync string format.');
       }
+    }
+  };
+
+  const handleSaveSyncCode = () => {
+    const code = syncCode.trim();
+    SRSEngine.setSyncCode(code);
+    if (code) {
+      SRSEngine.pullSync();
+      alert(`Auto-Sync enabled with code: ${code}`);
+    } else {
+      alert('Auto-Sync disabled.');
+    }
+  };
+
+  const handleManualSync = () => {
+    SRSEngine.pushSync();
+    SRSEngine.pullSync().then(() => alert('Manual sync triggered!'));
+  };
+
+  const handleRevert = () => {
+    if (SRSEngine.revertBackup()) {
+      alert('Reverted to last local backup!');
+      window.location.reload();
+    } else {
+      alert('No backup found.');
     }
   };
 
@@ -428,6 +454,97 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               }} 
               onClick={e => (e.target as HTMLTextAreaElement).select()} 
             />
+          </div>
+        )}
+      </div>
+
+      {/* Auto Sync Config */}
+      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <RotateCcw size={18} /> Cloud Auto-Sync
+          </h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+            Sync across devices seamlessly using a 6-character code.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <input 
+            type="text" 
+            value={syncCode} 
+            onChange={e => setSyncCode(e.target.value.toUpperCase().slice(0, 6))} 
+            placeholder="e.g. SBX999"
+            style={{
+              flex: 1,
+              padding: '0.75rem 1rem',
+              background: 'var(--bg-primary)',
+              border: '1px solid var(--border-subtle)',
+              color: 'white',
+              borderRadius: '6px',
+              fontFamily: 'monospace',
+              fontSize: '1rem',
+              textTransform: 'uppercase'
+            }}
+          />
+          <button
+            onClick={handleSaveSyncCode}
+            style={{
+              background: 'var(--accent-mint)',
+              color: 'white',
+              border: 'none',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 700
+            }}
+          >
+            Save Code
+          </button>
+        </div>
+        
+        {SRSEngine.getSyncCode() && (
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{
+              background: 'rgba(5, 150, 105, 0.2)',
+              color: 'var(--accent-mint)',
+              padding: '4px 10px',
+              borderRadius: '12px',
+              fontSize: '0.75rem',
+              fontWeight: 800
+            }}>
+              Auto-Sync Enabled: {SRSEngine.getSyncCode()}
+            </span>
+            <button
+              onClick={handleManualSync}
+              style={{
+                background: 'var(--bg-primary)',
+                color: 'var(--text-main)',
+                border: '1px solid var(--border-subtle)',
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.85rem'
+              }}
+            >
+              Auto-Sync Now
+            </button>
+            <button
+              onClick={handleRevert}
+              style={{
+                background: 'rgba(239, 68, 68, 0.1)',
+                color: '#EF4444',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.85rem'
+              }}
+            >
+              Revert to Local Backup
+            </button>
           </div>
         )}
       </div>
