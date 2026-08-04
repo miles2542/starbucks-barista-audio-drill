@@ -24,6 +24,7 @@ export class SRSEngine {
   }
 
   static saveAll(data: Record<string, WeightData>) {
+    localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
   }
 
@@ -137,6 +138,7 @@ export class SRSEngine {
   }
 
   static setSyncCode(code: string) {
+    localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
     if (!code) {
       localStorage.removeItem('starbucks_srs_sync_code');
     } else {
@@ -149,56 +151,80 @@ export class SRSEngine {
     window.dispatchEvent(new Event('starbucks_srs_sync_updated'));
   }
 
+  static resolveBlobId(code: string): string {
+    const cleanCode = code.trim();
+    if (cleanCode.includes('jsonblob.com/')) {
+      const parts = cleanCode.split('/');
+      return parts[parts.length - 1];
+    }
+    const mapped = localStorage.getItem(`starbucks_srs_blob_${cleanCode.toUpperCase()}`);
+    if (mapped) return mapped;
+    return cleanCode;
+  }
+
   // Real Cloud Check 1: Register brand-new channel
   static async createNewSyncChannel(code: string): Promise<{ success: boolean; itemCount: number; message: string }> {
+    localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
     const cleanCode = code.toUpperCase().trim();
     if (!cleanCode || cleanCode.length < 4) {
       return { success: false, itemCount: 0, message: 'Sync code must be at least 4 characters long.' };
     }
 
     try {
-      // Check if channel already exists
-      const res = await fetch(`https://kvdb.io/starbucks_srs_v1/${cleanCode}`, { cache: 'no-cache' });
-      if (res.ok) {
-        return {
-          success: false,
-          itemCount: 0,
-          message: `Channel '${cleanCode}' ALREADY EXISTS on cloud server! If you want to connect to it from this device, click 'Join Existing Channel'.`
-        };
+      const all = this.loadAll();
+      const res = await fetch(`https://jsonblob.com/api/jsonBlob`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(all),
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to create jsonBlob');
       }
 
-      // Register new channel by uploading current local snapshot
+      const location = res.headers.get('Location');
+      if (!location) {
+        throw new Error('No Location header returned from jsonBlob');
+      }
+
+      const parts = location.split('/');
+      const blobId = parts[parts.length - 1];
+      
+      localStorage.setItem(`starbucks_srs_blob_${cleanCode}`, blobId);
       this.setSyncCode(cleanCode);
-      await this.pushSync();
-      const itemCount = Object.keys(this.loadAll()).length;
+      
+      const itemCount = Object.keys(all).length;
       return {
         success: true,
         itemCount,
-        message: `Registered new sync channel '${cleanCode}' with ${itemCount} recipe items! Share code '${cleanCode}' with your other device and click 'Join Existing Channel'.`
+        message: `Registered new sync channel '${cleanCode}' with ${itemCount} recipe items! Share the blobId URL: ${location} or your direct blobId if on another device.`
       };
     } catch (e: any) {
       return {
         success: false,
         itemCount: 0,
-        message: `Network error connecting to cloud server: ${e?.message || 'Unable to reach kvdb.io'}`
+        message: `Network error connecting to cloud server: ${e?.message || 'Unable to reach jsonblob.com'}`
       };
     }
   }
 
   // Real Cloud Check 2: Join existing channel (MUST exist on server)
   static async joinExistingSyncChannel(code: string): Promise<{ success: boolean; itemCount: number; message: string }> {
-    const cleanCode = code.toUpperCase().trim();
+    localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
+    const cleanCode = code.trim();
     if (!cleanCode || cleanCode.length < 4) {
       return { success: false, itemCount: 0, message: 'Sync code must be at least 4 characters long.' };
     }
 
     try {
-      const res = await fetch(`https://kvdb.io/starbucks_srs_v1/${cleanCode}`, { cache: 'no-cache' });
+      const blobId = this.resolveBlobId(cleanCode);
+      const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, { cache: 'no-cache' });
+      
       if (res.status === 404 || !res.ok) {
         return {
           success: false,
           itemCount: 0,
-          message: `Channel '${cleanCode}' NOT FOUND on cloud server! Please verify the code or click 'Create New Channel' on your primary device first.`
+          message: `Channel '${cleanCode}' NOT FOUND on cloud server! Please verify the code/URL or click 'Create New Channel' on your primary device first.`
         };
       }
 
@@ -211,13 +237,13 @@ export class SRSEngine {
       return {
         success: true,
         itemCount,
-        message: `Successfully connected to active channel '${cleanCode}'! Downloaded and merged ${itemCount} recipe items from cloud.`
+        message: `Successfully connected to active channel! Downloaded and merged ${itemCount} recipe items from cloud.`
       };
     } catch (e: any) {
       return {
         success: false,
         itemCount: 0,
-        message: `Network error connecting to cloud server: ${e?.message || 'Unable to reach kvdb.io'}`
+        message: `Network error connecting to cloud server: ${e?.message || 'Unable to reach jsonblob.com'}`
       };
     }
   }
@@ -225,10 +251,11 @@ export class SRSEngine {
   static async pushSync() {
     const code = this.getSyncCode();
     if (!code) return;
+    const blobId = this.resolveBlobId(code);
     const all = this.loadAll();
     try {
-      await fetch(`https://kvdb.io/starbucks_srs_v1/${code}`, {
-        method: 'POST',
+      await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(all),
       });
@@ -240,8 +267,9 @@ export class SRSEngine {
   static async pullSync() {
     const code = this.getSyncCode();
     if (!code) return;
+    const blobId = this.resolveBlobId(code);
     try {
-      const res = await fetch(`https://kvdb.io/starbucks_srs_v1/${code}`, { cache: 'no-cache' });
+      const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, { cache: 'no-cache' });
       if (!res.ok) return;
       const remoteAll: Record<string, WeightData> = await res.json();
       
