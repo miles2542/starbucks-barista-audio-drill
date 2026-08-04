@@ -1,0 +1,115 @@
+> Hot Latte (L):
+- Steam milk: 1-3s
+- Queue shots: 1 2 2 3 (thẳng vào cốc, không vào shot glass)
+- Add syrup: 2 3 4 5 (mặc định số này áp dụng cho cả flavor và classic syrups trừ công thức đặc biệt sẽ được note), only if requested
+- Finish & Connect:
+  + Đổ shots vào cốc
+  + Đổ sữa đến dưới miệng cốc 6mm
+  + Kết thúc bằng latte art
+
+> Iced Latte (L):
+- Queue shots: 2 2 3 (vào shot glass)
+- Add syrup: 3 4 5, only if requested
+- Finish & connect: 
+  + Đổ sữa đến dưới upper line 6mm
+  + Đổ shots
+  + Đổ đá đến cách miệng cốc 6mm
+
+> Hot Cappucino (C):
+- Steam milk: 6-8s (giảm size - trừ Tall/Short)
+- Queue shots: 1 2 2 3 (thẳng vào cốc)
+- Add syrups: 1 2 3 4, only if requested
+- Finish & connect:
+  + Đổ shots vào cốc
+  + Đổ sữa đến dưới miệng cốc 6mm
+
+> Iced Cappucino (C):
+- Steam milk: Tall size 6-8s (mọi size đều steam milk ở mức Tall)
+- Queue shots: 2 2 3 (vào shot glass)
+- Add syrup: 2 3 4, only if requested
+- Finish & connect:
+  + Đổ sữa dưới middle line 6mm
+  + Đổ shots
+  + Đổ đá đến top logo
+  + Đổ foam dưới miệng cốc 6mm
+
+> Hot Americano (A):
+- Queue shots: 1 2 3 4 (thẳng vào cốc)
+- Add syrup: 2 3 4 5, only if requested
+- Finish & connect:
+  + Đổ shots vào cốc
+  + Đổ nước nóng đến miệng cốc 6mm
+
+> Iced Americano (A):
+- Queue shots: 2 3 4 (vào shot glass)
+- Add syrup: 3 4 5, only if requested
+- Finish & connect:
+  + Đổ nước lọc (thường) dưới upper line 6mm
+  + Đổ shots
+  + Đổ đá dưới miệng cốc 6mm
+
+> Hot Mocha (M):
+- Steam milk: 1-3s
+- Queue shots: 1 2 2 3 (direct cup)
+- Add syrup: Mocha Sauce 2 3 4 5
+- Finish and connect:
+  + Pump mocha sauce trước, xong đổ shots vào
+  + Lắc/khuấy đều shot và sauce
+  + Đổ sữa đến dưới miệng cốc 12mm (không đổ foam)
+  + Thêm whipping cream
+
+> Iced Mocha (M):
+- Queue shot: 2 2 3 (shot glass)
+- Add syrup: Mocha Sauce 3 4 5
+- Fnish & connect:
+  + Pump mocha sauce, xong đổ shots
+  + Lắc/khuấy đều shot và sauce
+  + Đổ sữa đến upper line
+  + Đổ đá đến dưới miệng cốc 6mm
+  + Thêm whipping cream
+  + Dùng dome cap (Thay vì flat lid) (extra info, not required to say but should add)
+
+> Hot Caramel Macchiato (CM):
+- Steam milk 1-3s
+- Queue shots: 1 2 2 3 (shot glass)
+- Add syrups: Vanilla 1 2 3 4 AND Classic 1 2 3 4 (e.g. a hot CM Grande will have 3 Vanilla pumps + 3 Classic pumps)
+- Finish & connect:
+  + Đổ sữa và foam đến dưới miệng cốc 12mm
+  + Đổ shots (lúc này đổ sẽ là lên trên foam - extra info)
+  + Vẽ caramel sauce 7-7-2 (7 vertical, 7 horizontal and 2 rounds, but just need to read 7-7-2)
+
+> Iced Caramel Macchiato (CM):
+- Queue shots: 2 2 3 (shot glass)
+- Add syrups: Vanilla 2 3 4 AND Classic 2 3 4
+- Finish & connect:
+  + Đổ sữa đến vạch cao nhất
+  + Đổ đá đến dưới miệng cốc 12mm
+  + Đổ shots (lên trên đá - extra info)
+  + Vẽ caramel sauce 7-7-2
+
+> Salted Caramel Cold Foam Dolce Espresso (SCDE):
+- Queue shots: 2 3 4 (shot glass)
+- Add syrups: AD Sauce 2 3 4
+- Finish & connect:
+  + Pump AD Sauce (sữa đặc) vào cốc, xong đổ shots
+  + Khuấy/lắc đều shot và sauce
+  + Đổ đá đến top logo
+  + Đổ SCDE Foam đến dưới miệng cốc 6mm
+  + Rắc 3-4 lần cinnamon powder lên (trên foam)
+
+> Dolce Espresso (DE):
+- Queue shots: 2 3 4 (shot glass)
+- Add syrups: AD Sauce 2 3 4
+- Finish & connect:
+  + Pump AD Sauce vào shaker, đổ shots vào, lắc đều
+  + Đổ đá đến vạch 4 trên shaker, (đậy nắp) lắc 5 lần
+  + Đổ hỗn hợp vào cốc
+
+> Coconut Dolce Espresso (CDE):
+- Queue shots: 2 3 4 (shot glass)
+- Add syrups: AD Sauce 2 3 4
+- Finish & connect:
+  + Pump AD Sauce vào cốc, đổ shots, lắc/khuấy đều
+  + Đổ Coconut milk đến middle line
+  + Đổ đá đến top logo
+  + Đổ Coconut Cold Foam đến dưới miệng cốc 6mm

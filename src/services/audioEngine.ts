@@ -48,10 +48,23 @@ function pcmToWavBlob(pcmBase64: string, sampleRate = 24000): Blob {
     return new Blob([buffer], { type: 'audio/wav' });
 }
 
+export const getTTSEngineMode = (): 'web' | 'hybrid' => {
+    return (localStorage.getItem('tts_engine_mode') as 'web' | 'hybrid') || 'web';
+};
+
+export const setTTSEngineMode = (mode: 'web' | 'hybrid'): void => {
+    localStorage.setItem('tts_engine_mode', mode);
+};
+
 // Gemini 3.1 Flash TTS Audio Generation with 1.10x Cadence
 export const speakTextGemini = async (text: string, apiKey?: string, rate: number = 1.10): Promise<boolean> => {
     stopSpeech();
     
+    if (getTTSEngineMode() === 'web') {
+        speakTextWeb(text, rate);
+        return false;
+    }
+
     if (!apiKey) {
         speakTextWeb(text, rate);
         return false;

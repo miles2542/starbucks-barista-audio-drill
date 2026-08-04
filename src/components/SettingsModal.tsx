@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { SRSEngine } from '../services/srsEngine';
 import { isModelExhausted } from '../services/geminiGrader';
-import { Key, QrCode, Download, Upload, RotateCcw, ExternalLink, Cpu, Brain, CheckCircle } from 'lucide-react';
+import { Key, QrCode, Download, Upload, RotateCcw, ExternalLink, Cpu, Brain, CheckCircle, Volume2 } from 'lucide-react';
 
 interface SettingsModalProps {
   onResetRecipes?: () => void;
@@ -12,6 +12,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('gemini_grader_model') || 'gemini-3.5-flash-lite');
   const [thinkingLevel, setThinkingLevel] = useState(() => localStorage.getItem('gemini_thinking_level') || 'HIGH');
+  const [ttsEngineMode, setTtsEngineMode] = useState<'web' | 'hybrid'>(() => (localStorage.getItem('tts_engine_mode') as 'web' | 'hybrid') || 'web');
   const [syncString, setSyncString] = useState('');
   
   const handleSaveKey = () => {
@@ -24,6 +25,11 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
     setThinkingLevel(thinking);
     localStorage.setItem('gemini_grader_model', model);
     localStorage.setItem('gemini_thinking_level', thinking);
+  };
+
+  const handleSaveTtsEngineMode = (mode: 'web' | 'hybrid') => {
+    setTtsEngineMode(mode);
+    localStorage.setItem('tts_engine_mode', mode);
   };
 
   const handleExport = () => {
@@ -100,6 +106,73 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
             }}
           >
             Save Key
+          </button>
+        </div>
+      </div>
+
+      {/* Voice Engine Setting */}
+      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Volume2 size={18} /> Voice Engine (TTS)
+          </h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+            Choose how the AI reads recipes and feedback aloud.
+          </p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          {/* Full Web Speech Synthesis */}
+          <button
+            onClick={() => handleSaveTtsEngineMode('web')}
+            style={{
+              padding: '0.75rem',
+              borderRadius: '8px',
+              border: ttsEngineMode === 'web' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
+              background: ttsEngineMode === 'web' ? 'rgba(5, 150, 105, 0.12)' : 'var(--bg-primary)',
+              color: '#FFF',
+              textAlign: 'left',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
+            }}
+          >
+            <div style={{ fontWeight: 800, fontSize: '0.82rem', color: ttsEngineMode === 'web' ? 'var(--accent-mint)' : '#FFF', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {ttsEngineMode === 'web' && <CheckCircle size={14} style={{ color: 'var(--accent-mint)' }} />} Full Web Speech
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--accent-mint)', fontWeight: 700 }}>
+              Default (Zero latency)
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+              Instant response, works offline using browser TTS.
+            </div>
+          </button>
+
+          {/* AI Hybrid */}
+          <button
+            onClick={() => handleSaveTtsEngineMode('hybrid')}
+            style={{
+              padding: '0.75rem',
+              borderRadius: '8px',
+              border: ttsEngineMode === 'hybrid' ? '2px solid var(--accent-mint)' : '1px solid var(--border-subtle)',
+              background: ttsEngineMode === 'hybrid' ? 'rgba(5, 150, 105, 0.12)' : 'var(--bg-primary)',
+              color: '#FFF',
+              textAlign: 'left',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
+            }}
+          >
+            <div style={{ fontWeight: 800, fontSize: '0.82rem', color: ttsEngineMode === 'hybrid' ? 'var(--accent-mint)' : '#FFF', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {ttsEngineMode === 'hybrid' && <CheckCircle size={14} style={{ color: 'var(--accent-mint)' }} />} AI Hybrid (Gemini TTS)
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--accent-mint)', fontWeight: 700 }}>
+              Natural AI voice
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+              Requires API key & network connection.
+            </div>
           </button>
         </div>
       </div>
