@@ -6,9 +6,9 @@
     "type": "hot",
     "steps": {
       "steamMilk": "Steam milk: 1-3s",
-      "queueShots": "Queue shots: 1 2 2 3 (thẳng vào cốc, không vào shot glass)",
-      "pumpSyrup": "Add syrup: 2 3 4 5 (mặc định áp dụng cho flavor & classic syrups), only if requested",
-      "finish": "Finish & Connect: Đổ sữa đến dưới miệng cốc 6mm, kết thúc bằng latte art"
+      "queueShots": "1 2 2 3",
+      "pumpSyrup": "2 3 4 5 (only if requested)",
+      "finish": "1. Đổ shots vào cốc\n2. Đổ sữa đến dưới miệng cốc 6mm\n3. Thêm bọc cốc (đai chống nóng)\n4. Kết thúc bằng latte art"
     }
   },
   {
@@ -17,10 +17,10 @@
     "code": "L (ICED)",
     "type": "iced",
     "steps": {
-      "steamMilk": "None (No steaming)",
-      "queueShots": "Queue shots: 2 2 3 (vào shot glass)",
-      "pumpSyrup": "Add syrup: 3 4 5, only if requested",
-      "finish": "Finish & Connect: Đổ sữa đến dưới vạch cao nhất 6mm -> Đổ shots -> Đổ đá đến cách miệng cốc 6mm"
+      "steamMilk": "None",
+      "queueShots": "2 2 3",
+      "pumpSyrup": "3 4 5 (only if requested)",
+      "finish": "1. Đổ sữa đến dưới upper line 6mm\n2. Đổ shots\n3. Đổ đá đến cách miệng cốc 6mm"
     }
   },
   {
@@ -29,10 +29,10 @@
     "code": "C (HOT)",
     "type": "hot",
     "steps": {
-      "steamMilk": "Steam milk: 6-8s (phải giảm 1 size pitcher sữa khi rót - trừ size Tall thì giữ nguyên)",
-      "queueShots": "Queue shots: 1 2 2 3 (thẳng vào cốc)",
-      "pumpSyrup": "Add syrups: 1 2 3 4, only if requested",
-      "finish": "Finish & Connect: Đổ sữa đến dưới miệng cốc 6mm"
+      "steamMilk": "Steam milk: 6-8s (giảm size - trừ Tall/Short)",
+      "queueShots": "1 2 2 3",
+      "pumpSyrup": "1 2 3 4 (only if requested)",
+      "finish": "1. Đổ shots vào cốc\n2. Đổ sữa đến dưới miệng cốc 6mm\n3. Thêm bọc cốc (đai chống nóng)"
     }
   },
   {
@@ -41,10 +41,10 @@
     "code": "C (ICED)",
     "type": "iced",
     "steps": {
-      "steamMilk": "Steam milk: Tall size 6-8s (mọi size đều steam milk ở mức Tall)",
-      "queueShots": "Queue shots: 2 2 3 (vào shot glass)",
-      "pumpSyrup": "Add syrup: 2 3 4, only if requested",
-      "finish": "Finish & Connect: Đổ sữa dưới vạch giữa 6mm -> Đổ shots -> Đổ đá đến top logo -> Đổ foam dưới miệng cốc 6mm"
+      "steamMilk": "Tall size 6-8s (mọi size đều steam milk ở mức Tall)",
+      "queueShots": "2 2 3",
+      "pumpSyrup": "2 3 4 (only if requested)",
+      "finish": "1. Đổ sữa dưới middle line 6mm\n2. Đổ shots\n3. Đổ đá đến top logo\n4. Đổ foam dưới miệng cốc 6mm"
     }
   },
   {
@@ -53,10 +53,10 @@
     "code": "A (HOT)",
     "type": "hot",
     "steps": {
-      "steamMilk": "None (No steaming)",
-      "queueShots": "Queue shots: 1 2 3 4 (thẳng vào cốc)",
-      "pumpSyrup": "Add syrup: 2 3 4 5, only if requested",
-      "finish": "Finish & Connect: (Hot) Cup sleeve -> Đổ nước nóng đến miệng cốc 6mm"
+      "steamMilk": "None",
+      "queueShots": "1 2 3 4",
+      "pumpSyrup": "2 3 4 5 (only if requested)",
+      "finish": "1. Đổ shots vào cốc\n2. Đổ nước nóng đến miệng cốc 6mm\n3. Thêm bọc cốc (đai chống nóng)"
     }
   },
   {
@@ -65,10 +65,10 @@
     "code": "A (ICED)",
     "type": "iced",
     "steps": {
-      "steamMilk": "None (No steaming)",
-      "queueShots": "Queue shots: 2 3 4 (vào shot glass)",
-      "pumpSyrup": "Add syrup: 3 4 5, only if requested",
-      "finish": "Finish & Connect: Đổ nước lọc (thường) dưới vạch cao nhất 6mm -> Đổ shots -> Đổ đá dưới miệng cốc 6mm"
+      "steamMilk": "None",
+      "queueShots": "2 3 4",
+      "pumpSyrup": "3 4 5 (only if requested)",
+      "finish": "1. Đổ nước lọc (thường) dưới upper line 6mm\n2. Đổ shots\n3. Đổ đá dưới miệng cốc 6mm"
     }
   },
   {
@@ -78,9 +78,9 @@
     "type": "hot",
     "steps": {
       "steamMilk": "Steam milk: 1-3s",
-      "queueShots": "Queue shots: 1 2 2 3 (thẳng vào cốc)",
-      "pumpSyrup": "Add syrup: Mocha Sauce 2 3 4 5 (mặc định áp dụng)",
-      "finish": "Finish & Connect: 1. Khuấy đều espresso shots với mocha sauce -> 2. Rót sữa đến dưới miệng cốc 12mm (không rót foam) -> 3. Phủ whipped cream trên cùng"
+      "queueShots": "1 2 2 3",
+      "pumpSyrup": "Mocha Sauce 2 3 4 5",
+      "finish": "1. Pump mocha sauce trước, xong đổ shots vào\n2. Lắc/khuấy đều shot và sauce\n3. Đổ sữa đến dưới miệng cốc 12mm (không đổ foam)\n4. Thêm whipping cream\n5. Thêm bọc cốc (đai chống nóng)"
     }
   },
   {
@@ -89,10 +89,10 @@
     "code": "M (ICED)",
     "type": "iced",
     "steps": {
-      "steamMilk": "None (No steaming)",
-      "queueShots": "Queue shots: 2 2 3 (vào shot glass)",
-      "pumpSyrup": "Add syrup: Mocha Sauce 3 4 5 (mặc định áp dụng)",
-      "finish": "Finish & Connect: 1. Khuấy đều espresso shots với mocha sauce -> 2. Rót sữa đến vạch trên cùng (top line) -> 3. Thêm đá cách miệng cốc 6mm -> 4. Phủ whipped cream lên trên (Khuyên dùng dome cap/nắp cầu)"
+      "steamMilk": "None",
+      "queueShots": "2 2 3",
+      "pumpSyrup": "Mocha Sauce 3 4 5",
+      "finish": "1. Pump mocha sauce, xong đổ shots\n2. Lắc/khuấy đều shot và sauce\n3. Đổ sữa đến upper line\n4. Đổ đá đến dưới miệng cốc 6mm\n5. Thêm whipping cream (dùng dome cap)"
     }
   },
   {
@@ -102,9 +102,9 @@
     "type": "hot",
     "steps": {
       "steamMilk": "Steam milk: 1-3s",
-      "queueShots": "Queue shots: 1 2 2 3 (vào shot glass)",
-      "pumpSyrup": "Add syrups: 1 2 3 4 Vanilla AND 1 2 3 4 Classic (ví dụ: Hot CM Grande = 3 Vanilla + 3 Classic)",
-      "finish": "Finish & Connect: 1. Rót sữa & foam cách miệng cốc 12mm -> 2. Đổ shots -> 3. Phủ caramel sauce 7-7-2 (7 dọc, 7 ngang, 2 vòng xung quanh)"
+      "queueShots": "1 2 2 3",
+      "pumpSyrup": "Vanilla 1 2 3 4 AND Classic 1 2 3 4",
+      "finish": "1. Đổ sữa và foam đến dưới miệng cốc 12mm\n2. Đổ shots (lên trên foam)\n3. Vẽ caramel sauce 7-7-2\n4. Thêm bọc cốc (đai chống nóng)"
     }
   },
   {
@@ -113,10 +113,46 @@
     "code": "CM (ICED)",
     "type": "iced",
     "steps": {
-      "steamMilk": "None (No steaming)",
-      "queueShots": "Queue shots: 2 2 3 (vào shot glass)",
-      "pumpSyrup": "Add syrups: 2 3 4 Vanilla AND 2 3 4 Classic",
-      "finish": "Finish & Connect: 1. Rót sữa đến vạch trên cùng (top line) -> 2. Thêm đá cách miệng cốc 12mm -> 3. Đổ shots lên trên mặt đá -> 4. Phủ caramel sauce 7-7-2"
+      "steamMilk": "None",
+      "queueShots": "2 2 3",
+      "pumpSyrup": "Vanilla 2 3 4 AND Classic 2 3 4",
+      "finish": "1. Đổ sữa đến vạch cao nhất (upper line)\n2. Đổ đá đến dưới miệng cốc 12mm\n3. Đổ shots (lên trên đá)\n4. Vẽ caramel sauce 7-7-2"
+    }
+  },
+  {
+    "id": "scde-iced",
+    "name": "Salted Caramel Cold Foam Dolce Espresso (SCDE)",
+    "code": "SCDE",
+    "type": "iced",
+    "steps": {
+      "steamMilk": "None",
+      "queueShots": "2 3 4",
+      "pumpSyrup": "AD Sauce (sữa đặc) 2 3 4",
+      "finish": "1. Pump AD Sauce vào cốc, xong đổ shots\n2. Khuấy/lắc đều shot và sauce\n3. Đổ đá đến top logo\n4. Đổ SCDE Foam đến dưới miệng cốc 6mm\n5. Rắc 3-4 lần cinnamon powder lên trên foam"
+    }
+  },
+  {
+    "id": "de-iced",
+    "name": "Dolce Espresso (DE)",
+    "code": "DE",
+    "type": "iced",
+    "steps": {
+      "steamMilk": "None",
+      "queueShots": "2 3 4",
+      "pumpSyrup": "AD Sauce (sữa đặc) 2 3 4",
+      "finish": "1. Pump AD Sauce vào shaker, đổ shots vào, lắc đều\n2. Đổ đá đến vạch 4 trên shaker, đậy nắp lắc 5 lần\n3. Đổ hỗn hợp vào cốc"
+    }
+  },
+  {
+    "id": "cde-iced",
+    "name": "Coconut Dolce Espresso (CDE)",
+    "code": "CDE",
+    "type": "iced",
+    "steps": {
+      "steamMilk": "None",
+      "queueShots": "2 3 4",
+      "pumpSyrup": "AD Sauce (sữa đặc) 2 3 4",
+      "finish": "1. Pump AD Sauce vào cốc, đổ shots, lắc/khuấy đều\n2. Đổ Coconut milk đến middle line\n3. Đổ đá đến top logo\n4. Đổ Coconut Cold Foam đến dưới miệng cốc 6mm"
     }
   }
 ]
