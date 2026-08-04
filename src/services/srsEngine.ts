@@ -209,7 +209,7 @@ export class SRSEngine {
   }
 
   // Real Cloud Check 1: Register brand-new channel
-  static async createNewSyncChannel(code: string): Promise<{ success: boolean; itemCount: number; message: string }> {
+  static async createNewSyncChannel(code: string, forceOverwrite = false): Promise<{ success: boolean; itemCount: number; message: string; codeExists?: boolean }> {
     localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
     const cleanCode = code.toUpperCase().trim();
     if (!cleanCode || cleanCode.length < 4) {
@@ -218,28 +218,40 @@ export class SRSEngine {
 
     try {
       const existingBlobId = await this.resolveBlobIdFromCode(cleanCode);
-      if (existingBlobId) {
+      if (existingBlobId && !forceOverwrite) {
         return {
           success: false,
           itemCount: 0,
-          message: `Sync channel '${cleanCode}' ALREADY EXISTS on cloud server! Click 'Join Existing Channel' on your secondary device to connect.`
+          codeExists: true,
+          message: `Sync channel '${cleanCode}' ALREADY EXISTS on cloud server! If you want to overwrite cloud data with your local progress, click 'Upload Local Progress to Cloud'. Otherwise click 'Join Existing Channel'.`
         };
       }
 
       const all = this.loadAll();
-      const res = await fetch(`https://jsonblob.com/api/jsonBlob`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(all),
-      });
-      
-      if (!res.ok) throw new Error('Failed to create cloud storage blob');
+      let blobId = existingBlobId;
 
-      const location = res.headers.get('Location');
-      if (!location) throw new Error('No Location header returned from cloud server');
+      if (!blobId) {
+        const res = await fetch(`https://jsonblob.com/api/jsonBlob`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(all),
+        });
+        
+        if (!res.ok) throw new Error('Failed to create cloud storage blob');
 
-      const parts = location.split('/');
-      const blobId = parts[parts.length - 1];
+        const location = res.headers.get('Location');
+        if (!location) throw new Error('No Location header returned from cloud server');
+
+        const parts = location.split('/');
+        blobId = parts[parts.length - 1];
+      } else {
+        // Overwrite existing blob
+        await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(all),
+        });
+      }
       
       localStorage.setItem(`starbucks_srs_blob_${cleanCode}`, blobId);
       await this.updateMasterIndex(cleanCode, blobId);
@@ -249,7 +261,7 @@ export class SRSEngine {
       return {
         success: true,
         itemCount,
-        message: `Registered new sync channel '${cleanCode}' with ${itemCount} recipe items! Enter code '${cleanCode}' on your other device and click 'Join Existing Channel'.`
+        message: `Registered & uploaded ${itemCount} recipe items to sync channel '${cleanCode}'! Enter code '${cleanCode}' on your other device and click 'Join Existing Channel'.`
       };
     } catch (e: any) {
       return {

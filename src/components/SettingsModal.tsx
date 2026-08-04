@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { SRSEngine } from '../services/srsEngine';
 import { isModelExhausted } from '../services/geminiGrader';
-import { Key, QrCode, Download, Upload, RotateCcw, Cpu, Brain, CheckCircle, Volume2, Unlink, Loader, AlertTriangle, Info, X, PlusCircle, Link } from 'lucide-react';
+import { Key, QrCode, Download, Upload, RotateCcw, Cpu, Brain, CheckCircle, Volume2, Unlink, Loader, AlertTriangle, Info, X, PlusCircle, Link, CloudUpload } from 'lucide-react';
 
 interface SettingsModalProps {
   onResetRecipes?: () => void;
@@ -13,6 +13,7 @@ interface CustomModalNotice {
   message: string;
   type: 'success' | 'error' | 'info';
   onReload?: boolean;
+  showForceUploadButton?: boolean;
 }
 
 export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
@@ -51,7 +52,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
   };
 
   const handleImport = () => {
-    const data = prompt('Paste sync JSON string from another device:');
+    const data = prompt('Paste sync string / QR code from another device:');
     if (data) {
       if (SRSEngine.importJSON(data)) {
         setModalNotice({
@@ -63,14 +64,14 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
       } else {
         setModalNotice({
           title: 'Import Failed',
-          message: 'Invalid sync JSON string format.',
+          message: 'Invalid sync string format.',
           type: 'error'
         });
       }
     }
   };
 
-  const handleCreateNewChannel = async () => {
+  const handleCreateNewChannel = async (forceOverwrite = false) => {
     const code = syncCode.trim().toUpperCase();
     if (!code || code.length < 4) {
       setModalNotice({
@@ -82,21 +83,22 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
     }
 
     setIsConnectingCloud(true);
-    const result = await SRSEngine.createNewSyncChannel(code);
+    const result = await SRSEngine.createNewSyncChannel(code, forceOverwrite);
     setIsConnectingCloud(false);
 
     if (result.success) {
       setSyncCode(code);
       setModalNotice({
-        title: 'New Channel Created & Registered',
+        title: forceOverwrite ? 'Cloud Channel Overwritten & Synced' : 'New Channel Created & Registered',
         message: result.message,
         type: 'success'
       });
     } else {
       setModalNotice({
-        title: 'Channel Creation Failed',
+        title: 'Channel Already Exists',
         message: result.message,
-        type: 'error'
+        type: result.codeExists ? 'info' : 'error',
+        showForceUploadButton: result.codeExists
       });
     }
   };
@@ -604,7 +606,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
         {/* Explicit Action Buttons: Create New vs Join Existing */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
           <button
-            onClick={handleCreateNewChannel}
+            onClick={() => handleCreateNewChannel(false)}
             disabled={isConnectingCloud}
             style={{
               background: 'var(--accent-mint)',
@@ -732,7 +734,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
           zIndex: 2000,
           padding: '1rem'
         }}>
-          <div className="card" style={{ maxWidth: '420px', width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: `4px solid ${modalNotice.type === 'error' ? 'var(--status-fail)' : modalNotice.type === 'success' ? 'var(--accent-mint)' : '#3B82F6'}` }}>
+          <div className="card" style={{ maxWidth: '440px', width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: `4px solid ${modalNotice.type === 'error' ? 'var(--status-fail)' : modalNotice.type === 'success' ? 'var(--accent-mint)' : '#3B82F6'}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {modalNotice.type === 'error' ? (
@@ -762,6 +764,31 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               {modalNotice.message}
             </p>
 
+            {modalNotice.showForceUploadButton && (
+              <button
+                onClick={() => {
+                  setModalNotice(null);
+                  handleCreateNewChannel(true);
+                }}
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: 'var(--accent-mint)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <CloudUpload size={16} /> Upload & Overwrite Cloud with Local Progress
+              </button>
+            )}
+
             <button
               onClick={() => {
                 const reload = modalNotice.onReload;
@@ -769,18 +796,18 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
                 if (reload) window.location.reload();
               }}
               style={{
-                marginTop: '0.5rem',
+                marginTop: modalNotice.showForceUploadButton ? '0' : '0.5rem',
                 padding: '0.65rem 1.25rem',
-                background: modalNotice.type === 'error' ? 'var(--status-fail)' : modalNotice.type === 'success' ? 'var(--accent-mint)' : '#3B82F6',
+                background: modalNotice.type === 'error' ? 'var(--status-fail)' : modalNotice.type === 'success' ? 'var(--accent-mint)' : 'var(--bg-primary)',
                 color: 'white',
-                border: 'none',
+                border: modalNotice.showForceUploadButton ? '1px solid var(--border-subtle)' : 'none',
                 borderRadius: '6px',
                 fontWeight: 700,
                 cursor: 'pointer',
                 textAlign: 'center'
               }}
             >
-              OK
+              {modalNotice.showForceUploadButton ? 'Cancel' : 'OK'}
             </button>
           </div>
         </div>
