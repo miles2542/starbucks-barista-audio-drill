@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { SRSEngine } from '../services/srsEngine';
 import { isModelExhausted } from '../services/geminiGrader';
-import { Key, QrCode, Download, Upload, RotateCcw, Cpu, Brain, CheckCircle, Volume2, Unlink, Loader, AlertTriangle, Info, X } from 'lucide-react';
+import { Key, QrCode, Download, Upload, RotateCcw, Cpu, Brain, CheckCircle, Volume2, Unlink, Loader, AlertTriangle, Info, X, PlusCircle, Link } from 'lucide-react';
 
 interface SettingsModalProps {
   onResetRecipes?: () => void;
@@ -70,7 +70,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
     }
   };
 
-  const handleSaveSyncCode = async () => {
+  const handleCreateNewChannel = async () => {
     const code = syncCode.trim().toUpperCase();
     if (!code || code.length < 4) {
       setModalNotice({
@@ -82,19 +82,51 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
     }
 
     setIsConnectingCloud(true);
-    const result = await SRSEngine.validateAndConnectSyncCode(code);
+    const result = await SRSEngine.createNewSyncChannel(code);
     setIsConnectingCloud(false);
 
     if (result.success) {
       setSyncCode(code);
       setModalNotice({
-        title: result.isNewChannel ? 'New Channel Created' : 'Connected to Cloud Channel',
+        title: 'New Channel Created & Registered',
         message: result.message,
         type: 'success'
       });
     } else {
       setModalNotice({
-        title: 'Connection Failed',
+        title: 'Channel Creation Failed',
+        message: result.message,
+        type: 'error'
+      });
+    }
+  };
+
+  const handleJoinExistingChannel = async () => {
+    const code = syncCode.trim().toUpperCase();
+    if (!code || code.length < 4) {
+      setModalNotice({
+        title: 'Invalid Sync Code',
+        message: 'Sync code must be at least 4 characters long (e.g. SBX999 or MILES1).',
+        type: 'error'
+      });
+      return;
+    }
+
+    setIsConnectingCloud(true);
+    const result = await SRSEngine.joinExistingSyncChannel(code);
+    setIsConnectingCloud(false);
+
+    if (result.success) {
+      setSyncCode(code);
+      setModalNotice({
+        title: 'Connected & Synced',
+        message: result.message,
+        type: 'success',
+        onReload: true
+      });
+    } else {
+      setModalNotice({
+        title: 'Channel Not Found',
         message: result.message,
         type: 'error'
       });
@@ -513,26 +545,27 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
       </div>
 
       {/* Cloud Auto-Sync Configuration */}
-      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         <div>
           <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <RotateCcw size={18} /> Cloud Auto-Sync
           </h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-            Enter any custom 6-character code (or generate one) on both devices to auto-sync progress seamlessly.
+            Create a new sync channel on your primary device, or join an existing channel from another device.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        {/* Sync Code Input & Code Generator */}
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <input 
             type="text" 
             value={syncCode} 
-            onChange={e => setSyncCode(e.target.value.toUpperCase().slice(0, 6))} 
-            placeholder="e.g. SBX999"
+            onChange={e => setSyncCode(e.target.value.toUpperCase().slice(0, 8))} 
+            placeholder="E.G. SBX999"
             disabled={isConnectingCloud}
             style={{
               flex: 1,
-              minWidth: '130px',
+              minWidth: '140px',
               padding: '0.75rem 1rem',
               background: 'var(--bg-primary)',
               border: '1px solid var(--border-subtle)',
@@ -566,33 +599,60 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
           >
             Generate Random Code
           </button>
+        </div>
+
+        {/* Explicit Action Buttons: Create New vs Join Existing */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
           <button
-            onClick={handleSaveSyncCode}
+            onClick={handleCreateNewChannel}
             disabled={isConnectingCloud}
             style={{
               background: 'var(--accent-mint)',
               color: 'white',
               border: 'none',
-              padding: '0.75rem 1.5rem',
+              padding: '0.8rem 1rem',
               borderRadius: '6px',
               cursor: isConnectingCloud ? 'not-allowed' : 'pointer',
               fontWeight: 700,
+              fontSize: '0.85rem',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '6px'
             }}
           >
-            {isConnectingCloud ? <Loader size={16} className="spin-animation" /> : 'Save Code'}
+            {isConnectingCloud ? <Loader size={16} className="spin-animation" /> : <><PlusCircle size={16} /> Create New Channel</>}
+          </button>
+
+          <button
+            onClick={handleJoinExistingChannel}
+            disabled={isConnectingCloud}
+            style={{
+              background: 'var(--bg-primary)',
+              color: '#FFF',
+              border: '1px solid var(--accent-mint)',
+              padding: '0.8rem 1rem',
+              borderRadius: '6px',
+              cursor: isConnectingCloud ? 'not-allowed' : 'pointer',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+          >
+            {isConnectingCloud ? <Loader size={16} className="spin-animation" /> : <><Link size={16} /> Join Existing Channel</>}
           </button>
         </div>
 
         {SRSEngine.getSyncCode() && (
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(5, 150, 105, 0.08)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid rgba(5, 150, 105, 0.25)' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(5, 150, 105, 0.08)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid rgba(5, 150, 105, 0.25)', marginTop: '0.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
               <CheckCircle size={18} style={{ color: 'var(--accent-mint)', flexShrink: 0 }} />
               <div>
                 <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#FFF' }}>
-                  Auto-Sync Channel Active: <span style={{ color: 'var(--accent-mint)', fontFamily: 'monospace' }}>{SRSEngine.getSyncCode()}</span>
+                  Auto-Sync Active: <span style={{ color: 'var(--accent-mint)', fontFamily: 'monospace' }}>{SRSEngine.getSyncCode()}</span>
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   Auto-syncs in background on drill complete or app focus.
@@ -657,7 +717,7 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
         </div>
       </div>
 
-      {/* Custom Modal Notice Dialog (Replaces browser default alerts) */}
+      {/* Custom Modal Notice Dialog */}
       {modalNotice && (
         <div style={{
           position: 'fixed',

@@ -149,48 +149,73 @@ export class SRSEngine {
     window.dispatchEvent(new Event('starbucks_srs_sync_updated'));
   }
 
-  static async validateAndConnectSyncCode(code: string): Promise<{ success: boolean; isNewChannel: boolean; itemCount: number; message: string }> {
+  // Real Cloud Check 1: Register brand-new channel
+  static async createNewSyncChannel(code: string): Promise<{ success: boolean; itemCount: number; message: string }> {
     const cleanCode = code.toUpperCase().trim();
     if (!cleanCode || cleanCode.length < 4) {
-      return { success: false, isNewChannel: false, itemCount: 0, message: 'Sync code must be at least 4 characters long.' };
+      return { success: false, itemCount: 0, message: 'Sync code must be at least 4 characters long.' };
     }
 
     try {
-      const res = await fetch(`https://kvdb.io/starbucks_srs_v1/${cleanCode}`);
-      if (res.status === 404) {
-        // Register new channel by uploading current local snapshot
-        this.setSyncCode(cleanCode);
-        await this.pushSync();
-        return {
-          success: true,
-          isNewChannel: true,
-          itemCount: Object.keys(this.loadAll()).length,
-          message: `Created & registered new cloud sync channel '${cleanCode}'!`
-        };
-      } else if (!res.ok) {
+      // Check if channel already exists
+      const res = await fetch(`https://kvdb.io/starbucks_srs_v1/${cleanCode}`, { cache: 'no-cache' });
+      if (res.ok) {
         return {
           success: false,
-          isNewChannel: false,
           itemCount: 0,
-          message: `Cloud server error (${res.status} ${res.statusText}). Please try again later.`
-        };
-      } else {
-        // Existing channel found: pull and merge!
-        const remoteAll: Record<string, WeightData> = await res.json();
-        this.setSyncCode(cleanCode);
-        await this.pullSync();
-        const itemCount = Object.keys(remoteAll).length;
-        return {
-          success: true,
-          isNewChannel: false,
-          itemCount,
-          message: `Successfully connected to cloud channel '${cleanCode}'! Found ${itemCount} active recipe items.`
+          message: `Channel '${cleanCode}' ALREADY EXISTS on cloud server! If you want to connect to it from this device, click 'Join Existing Channel'.`
         };
       }
+
+      // Register new channel by uploading current local snapshot
+      this.setSyncCode(cleanCode);
+      await this.pushSync();
+      const itemCount = Object.keys(this.loadAll()).length;
+      return {
+        success: true,
+        itemCount,
+        message: `Registered new sync channel '${cleanCode}' with ${itemCount} recipe items! Share code '${cleanCode}' with your other device and click 'Join Existing Channel'.`
+      };
     } catch (e: any) {
       return {
         success: false,
-        isNewChannel: false,
+        itemCount: 0,
+        message: `Network error connecting to cloud server: ${e?.message || 'Unable to reach kvdb.io'}`
+      };
+    }
+  }
+
+  // Real Cloud Check 2: Join existing channel (MUST exist on server)
+  static async joinExistingSyncChannel(code: string): Promise<{ success: boolean; itemCount: number; message: string }> {
+    const cleanCode = code.toUpperCase().trim();
+    if (!cleanCode || cleanCode.length < 4) {
+      return { success: false, itemCount: 0, message: 'Sync code must be at least 4 characters long.' };
+    }
+
+    try {
+      const res = await fetch(`https://kvdb.io/starbucks_srs_v1/${cleanCode}`, { cache: 'no-cache' });
+      if (res.status === 404 || !res.ok) {
+        return {
+          success: false,
+          itemCount: 0,
+          message: `Channel '${cleanCode}' NOT FOUND on cloud server! Please verify the code or click 'Create New Channel' on your primary device first.`
+        };
+      }
+
+      const remoteAll: Record<string, WeightData> = await res.json();
+      const itemCount = Object.keys(remoteAll).length;
+
+      this.setSyncCode(cleanCode);
+      await this.pullSync();
+
+      return {
+        success: true,
+        itemCount,
+        message: `Successfully connected to active channel '${cleanCode}'! Downloaded and merged ${itemCount} recipe items from cloud.`
+      };
+    } catch (e: any) {
+      return {
+        success: false,
         itemCount: 0,
         message: `Network error connecting to cloud server: ${e?.message || 'Unable to reach kvdb.io'}`
       };
@@ -204,6 +229,7 @@ export class SRSEngine {
     try {
       await fetch(`https://kvdb.io/starbucks_srs_v1/${code}`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(all),
       });
     } catch (e) {
@@ -215,7 +241,7 @@ export class SRSEngine {
     const code = this.getSyncCode();
     if (!code) return;
     try {
-      const res = await fetch(`https://kvdb.io/starbucks_srs_v1/${code}`);
+      const res = await fetch(`https://kvdb.io/starbucks_srs_v1/${code}`, { cache: 'no-cache' });
       if (!res.ok) return;
       const remoteAll: Record<string, WeightData> = await res.json();
       
