@@ -97,6 +97,11 @@ export class SRSEngine {
     }
   }
 
+  static revertAndReGrade(id: string, targetPassStatus: boolean, allRecipeIds: string[], speedMs?: number) {
+    this.revertBackup();
+    this.updateItem(id, targetPassStatus, allRecipeIds, speedMs);
+  }
+
   static getNextRecipe(recipes: Recipe[], excludeId?: string): Recipe | null {
     if (!recipes || recipes.length === 0) return null;
 

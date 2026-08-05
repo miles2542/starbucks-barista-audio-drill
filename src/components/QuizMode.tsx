@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Recipe } from '../types/recipe';
 import { audioListener, speakTextGemini, speakTextWeb } from '../services/audioEngine';
 import { SRSEngine } from '../services/srsEngine';
@@ -91,6 +91,25 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
   
   const [autoAdvanceMode, setAutoAdvanceMode] = useState<'handsfree' | 'manual'>('handsfree');
 
+  const timersRef = useRef<number[]>([]);
+
+  const stopAllAudioAndTimers = useCallback(() => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+    window.speechSynthesis.cancel();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopAllAudioAndTimers();
+    };
+  }, [stopAllAudioAndTimers]);
+
+  const safeSetTimeout = (fn: () => void, ms: number) => {
+    const t = setTimeout(fn, ms);
+    timersRef.current.push(t);
+  };
+
   const apiKey = localStorage.getItem('gemini_api_key') || '';
 
   useEffect(() => {
@@ -150,13 +169,13 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
             speakTextWeb("Pass!", 1.10);
 
             if (autoAdvanceMode === 'handsfree') {
-              setTimeout(() => {
+              safeSetTimeout(() => {
                 advanceToNext(true);
               }, 1200);
             }
           } else {
             speakTextWeb("Fail!", 1.10);
-            setTimeout(() => {
+            safeSetTimeout(() => {
               speakTextGemini(result.feedback, apiKey, 1.10);
             }, 900);
           }
@@ -203,9 +222,11 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
     setIsListening(false);
     setAudioVolume(0);
     setLiveTranscript('');
+    stopAllAudioAndTimers();
   };
 
   const handleRetryCurrentDrink = () => {
+    stopAllAudioAndTimers();
     setEvaluation(null);
     setLiveTranscript('');
     setCurrentDebugLog(null);
@@ -215,6 +236,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
   };
 
   const handleSkipDrinkNoMetrics = () => {
+    stopAllAudioAndTimers();
     if (isListening) {
       audioListener.cancel();
       setIsListening(false);
@@ -230,6 +252,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
   };
 
   const advanceToNext = (autoStart = false) => {
+    stopAllAudioAndTimers();
     setEvaluation(null);
     setLiveTranscript('');
     setCurrentDebugLog(null);
@@ -242,7 +265,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
       speakTextWeb(`Next: ${nextRecipe.name}`, 1.10);
 
       if (autoStart && autoAdvanceMode === 'handsfree') {
-        setTimeout(() => {
+        safeSetTimeout(() => {
           startListeningInternal(nextRecipe);
         }, 2200);
       }
@@ -577,16 +600,39 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-            {!evaluation.pass && !evaluation.isError && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              {!evaluation.pass && !evaluation.isError && (
+                <button
+                  onClick={handleRetryCurrentDrink}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem 1rem',
+                    background: 'var(--bg-primary)',
+                    color: 'var(--status-fail)',
+                    border: '1px solid var(--status-fail)',
+                    borderRadius: '6px',
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <RotateCcw size={16} /> Retry This Drink
+                </button>
+              )}
+
               <button
-                onClick={handleRetryCurrentDrink}
+                onClick={() => advanceToNext(autoAdvanceMode === 'handsfree')}
                 style={{
                   flex: 1,
                   padding: '0.75rem 1rem',
-                  background: 'var(--bg-primary)',
-                  color: 'var(--status-fail)',
-                  border: '1px solid var(--status-fail)',
+                  background: 'var(--accent-mint)',
+                  color: 'white',
+                  border: 'none',
                   borderRadius: '6px',
                   fontSize: '0.9rem',
                   fontWeight: 700,
@@ -597,30 +643,40 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
                   gap: '8px'
                 }}
               >
-                <RotateCcw size={16} /> Retry This Drink
+                Next Drink
+              </button>
+            </div>
+
+            {!evaluation.isError && (
+              <button
+                onClick={() => {
+                  if (currentRecipe) {
+                    stopAllAudioAndTimers();
+                    const allIds = recipes.map(r => r.id);
+                    SRSEngine.revertAndReGrade(currentRecipe.id, !evaluation.pass, allIds);
+                    setEvaluation({ ...evaluation, pass: !evaluation.pass });
+                    setToastNotification(`Grade corrected to ${!evaluation.pass ? 'PASS' : 'FAIL'}`);
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 1rem',
+                  background: 'var(--bg-primary)',
+                  color: 'var(--text-muted)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '6px',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                {evaluation.pass ? 'Mark Pass as Fail' : 'Mark Fail as Pass'}
               </button>
             )}
-
-            <button
-              onClick={() => advanceToNext(autoAdvanceMode === 'handsfree')}
-              style={{
-                flex: 1,
-                padding: '0.75rem 1rem',
-                background: 'var(--accent-mint)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.9rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}
-            >
-              Next Drink
-            </button>
           </div>
         </div>
       )}
