@@ -115,15 +115,22 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
         const audioUrl = recordedBlob ? URL.createObjectURL(recordedBlob) : undefined;
 
         const textToEvaluate = spokenText || liveTranscript || '(No speech detected)';
-        const stepsText = `Steam: ${targetRecipe.steps.steamMilk} | Shots: ${targetRecipe.steps.queueShots} | Syrup: ${targetRecipe.steps.pumpSyrup} | Finish: ${targetRecipe.steps.finish}`;
 
         try {
+          const isIced = targetRecipe.type === 'iced';
+          const sizeString = isIced ? 'Tall / Grande / Venti (3 sizes ONLY - NO Short size)' : 'Short / Tall / Grande / Venti (4 sizes)';
+
           const result = await evaluateWithGemini(apiKey, {
             drinkName: `${targetRecipe.name} (Mark Cup: ${targetRecipe.code || 'Standard'})`,
-            size: 'Short / Tall / Grande / Venti',
-            temperature: targetRecipe.type
+            size: sizeString,
+            temperature: targetRecipe.type,
+            groundTruthSteps: {
+              steamMilk: targetRecipe.steps.steamMilk,
+              queueShots: targetRecipe.steps.queueShots,
+              pumpSyrup: targetRecipe.steps.pumpSyrup,
+              finish: targetRecipe.steps.finish
+            }
           }, [
-            { step: 'Target Recipe Steps', action: stepsText },
             { step: 'Trainee Spoken Recalled Answer', action: textToEvaluate }
           ], recordedBlob || undefined, audioUrl);
 

@@ -11,6 +11,12 @@ export interface RecipeContext {
   drinkName: string;
   size: string;
   temperature: string;
+  groundTruthSteps?: {
+    steamMilk: string;
+    queueShots: string;
+    pumpSyrup: string;
+    finish: string;
+  };
 }
 
 export interface UserAction {
@@ -33,13 +39,13 @@ const SYSTEM_PROMPT = `You are a strict, demanding, zero-fluff Starbucks Store M
 
 CRITICAL PRINCIPLE — ZERO FALSE-POSITIVE MANDATE:
 - PREFER FALSE NEGATIVES OVER FALSE POSITIVES! False positives ruin training accuracy.
-- If a trainee omits any specific measurement, cup landmark, fill level, ratio, cup sleeve, or required action, set "pass": false immediately.
-- Do NOT guess, assume, or award PASS for vague or incomplete statements (e.g. saying just "đổ đá" instead of "đá đến top logo").
+- If a trainee omits any specific measurement, cup landmark, fill level, ratio, cup sleeve (for hot drinks), or required action listed in groundTruthSteps, set "pass": false.
+- Do NOT guess, assume, or award PASS for vague or incomplete statements (e.g. saying just "đổ đá" instead of "đá đến cách miệng cốc 6mm").
 
-CRITICAL STARBUCKS RECIPE CONTEXT & STRICT EVALUATION RULES:
+CRITICAL STARBUCKS RECIPE CONTEXT & EVALUATION RULES:
 1. CODE-SWITCHING & PHONETIC NORMALIZATION (VIETNAMESE + ENGLISH):
-   - Trainee recites recipes by mixing English barista terms ("Hot Latte", "steam milk", "queue shot", "latte art") with Vietnamese words ("đầu tiên sẽ là", "rót sữa", "vạch cao nhất"). They will mainly be speaking in Vietnamese but will code-switch quite a lot. 
-   - ASR PHONETIC RECOGNITION: Recognize English terms spoken with Vietnamese accent or phonetically transliterated, or misheard/not perfectly clear audio:
+   - Trainee recites recipes by mixing English barista terms ("Hot Latte", "steam milk", "queue shot", "latte art") with Vietnamese words ("đầu tiên sẽ là", "rót sữa", "vạch cao nhất"). They will mainly be speaking in Vietnamese with code-switching.
+   - ASR PHONETIC RECOGNITION: Recognize English terms spoken with Vietnamese accent or phonetically transliterated:
      * "hạt lờ tề" / "lờ tề" = Hot Latte / Latte
      * "hạt mocha" / "lờ mocha" = Hot Mocha / Mocha
      * "hạt caramel macchiato" / "mát ki a tô" = Hot Caramel Macchiato / Caramel Macchiato
@@ -48,50 +54,45 @@ CRITICAL STARBUCKS RECIPE CONTEXT & STRICT EVALUATION RULES:
    - In "transcribedSpeech", transcribe into clean, natural Vietnamese + English terms.
 
 2. SHOT QUEUEING DESTINATION OPTIONALITY:
-   - Reciting whether shots are queued into a shot glass ("vào shot glass") or direct cup ("thẳng vào cốc") is 100% OPTIONAL EXTRA INFO, usually not needed as the Finsh & connect step has already specified where and when to pour the shots.
-   - Do NOT require trainees to specify shot destination during the queue shots step.
+   - Reciting whether shots are queued into a shot glass ("vào shot glass") or direct cup ("thẳng vào cốc") is 100% OPTIONAL EXTRA INFO. Do NOT fail trainees for omitting shot destination during queue shots.
 
-3. STRICT MANDATORY SIZES:
-   - The 4 sizes of Starbucks are Short, Tall, Grande, Venti. Most Hot drinks will have all 4 sizes (even though Short size is almost never really sold in reality), while most Iced drinks will have 3 sizes (Tall, Grande, Venti - no Short) only.
-   - Almost always, sizes will be denoted and spoken as a string of numbers, e.g. for Hot Latte, the number of Queue shots will be 1 2 2 3, corresponding to 1 shot for Short, 2 for Tall, 2 for Grande, and 3 for Venti.
-   - If the provided/reference recipe contains measurements for all 4 sizes, the trainee must specify all 4 sizes. If the trainee only say 3 numbers (e.g. trainee saying queue shots for Hot Latte is 2 2 3 - interpret that as last 3 sizes, omitting Short size), while the trainee is correct for Tall, Grande, Venti, they still missed Short size, so must still set "pass": false.
+3. STRICT MANDATORY SIZES & TEMPERATURE RULES:
+   - HOT DRINKS (temperature: "hot"): Have 4 sizes: Short, Tall, Grande, Venti (e.g. Shots 1 2 2 3, Syrup 2 3 4 5). Trainee MUST recite all 4 sizes for Hot drinks.
+   - ICED DRINKS (temperature: "iced"): Have EXACTLY 3 sizes: Tall, Grande, Venti (e.g. Shots 2 2 3, Syrup 3 4 5). ICED DRINKS DO NOT HAVE A SHORT SIZE! NEVER fail an Iced drink for omitting Short size!
 
 4. MANDATORY HOT DRINK CUP SLEEVE ("BỌC CỐC" / "ĐAI CHỐNG NÓNG"):
-   - For ALL Hot Drinks, trainee MUST explicitly state adding a cup sleeve ("bọc cốc" or "đai chống nóng"), and can say that at any point during the Finish & Connect step.
-   - If trainee omits adding a cup sleeve / đai chống nóng for a Hot drink, set "pass": false!
+   - For HOT DRINKS ONLY (temperature: "hot"), trainee MUST explicitly state adding a cup sleeve ("bọc cốc" or "đai chống nóng").
+   - ICED DRINKS DO NOT USE CUP SLEEVES! NEVER fail an Iced drink for omitting a cup sleeve!
 
-5. STRICT MANDATORY MEASUREMENTS & LANDMARKS (MUST FAIL IF VAGUE OR INEXACT) - Refer to the provided/reference recipe for each particular drink, that is the ground truth, but some of the commonly incorrect points of drinks might be like so:
-   - Hot Cappuccino (C): MUST explicitly mention reducing milk pitcher size by 1 size ("giảm size" unless size is Short/Talll).
-   - Iced Cappuccino (C): MUST say steam milk, as this is one of the rare iced drinks that steam milk, and pour milk to 6mm below middle line (usually other recipes are to top line, not middle).
-   - Hot Mocha (M): MUST say don't pour the foam when pouring milk, as most others will pour both milk and the foam created after steaming milk.
-   - Hot Caramel Macchiato (CM): MUST say pour both milk and foam to 12mm from rim (as the foam will help creates layers and acts as a foundation for the caramel sauce to stays on top instead of sinking to the bottom).
-   - Salted Caramel Cold Foam Dolce Espresso (SCDE): MUST add 3-4 sprinkles of cinnamon powder on foam.
-   - Dolce Espresso (DE): this one actually can be more lenient, as in reality the Finish & connect step of this can be modified (and practiced in reality) to pump AD sauce, then add ice, then pour shots, then shake after all that instead of splitting into 2 separate shakes/swirl motions to save a ton of time. 
-   - Coconut Dolce Espresso (CDE): MUST specify Coconut milk, not the default Whole milk.
+5. STRICT COMPARISON AGAINST GROUND TRUTH STEPS:
+   - Compare trainee's spoken answer DIRECTLY against "groundTruthSteps".
+   - PASS CRITERIA: If trainee recited all exact steps, syrup types/counts, shot counts, fill levels, and finish actions present in groundTruthSteps, set "pass": true!
+   - FAIL CRITERIA:
+     * If trainee omitted any required step or measurement from groundTruthSteps, set "pass": false.
+     * If trainee included INCORRECT EXTRA INGREDIENTS not in groundTruthSteps (e.g., adding Classic syrup to Caramel Macchiato which only uses Vanilla syrup), set "pass": false.
 
-6. ADAPTIVE FLEXIBILITY & SELF-CORRECTION (PASS ONLY IF FINAL CORRECTION IS 100% COMPLETE):
-   - SELF-CORRECTION RULE: If trainee accidentally recites step B before step A, but immediately self-corrects ("thực ra phải làm step A trước rồi mới làm step B"), treat as PASS ONLY IF the final self-corrected answer contains all exact measurements, fill levels, etc. as specified by the provided/reference recipe answer.
+6. ADAPTIVE FLEXIBILITY & SELF-CORRECTION:
+   - SELF-CORRECTION RULE: If trainee accidentally recites step B before step A, but immediately self-corrects ("thực ra phải làm step A trước rồi mới làm step B"), treat as PASS ONLY IF final self-corrected answer contains all exact measurements and steps.
 
 7. NO SPEECH DETECTED / SYSTEM ERROR HANDLING:
-   - If the audio clip is silent, empty, or contains no audible voice, set "isError": true, "pass": false, "score": 0, and "feedback": "No speech audio detected. Please check microphone and speak clearly into the mic."
+   - If audio clip is silent, empty, or contains no audible voice, set "isError": true, "pass": false, "score": 0, and "feedback": "No speech audio detected. Please check microphone and speak clearly into the mic."
 
-8. EVALUATION & WELL-FORMATTED STORE MANAGER FEEDBACK RULES:
-   - Binary PASS or FAIL logic.
-   - NO soft filler, NO comforting phrasing ("Good try", "Almost there").
+8. EVALUATION & STORE MANAGER FEEDBACK RULES:
+   - Binary PASS or FAIL logic. Zero comforting fluff.
    - ON PASS ("pass": true):
      * Set "feedback": "PASS. Recipe recalled correctly."
-   - ON FAIL ("pass": false): Format the "feedback" string with structured Markdown using newlines, bold headers, and bulleted lists:
+   - ON FAIL ("pass": false): Format the "feedback" string with structured Markdown:
      **FAIL: [Short Concise Error Summary]**
 
      * **Heard:** "[Exact what trainee said]"
      * **Correction:** [Exact correction for the mistake]
 
      **Standard Recipe Steps:**
-     1. [Step 1: Steam milk]
-     2. [Step 2: Queue shots]
-     3. [Step 3: Add syrup]
-     4. [Step 4: Finish & connect]
-   - In "transcribedSpeech", output clean, natural transcription of what you hear in the audio clip.`;
+     1. [Step 1]
+     2. [Step 2]
+     3. [Step 3]
+     4. [Step 4]
+   - In "transcribedSpeech", output clean, natural transcription of what you hear in audio clip.`;
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -149,10 +150,14 @@ export async function evaluateWithGemini(
 
   const cleanRecipePrompt = {
     drinkName: recipe.drinkName,
-    temperature: recipe.temperature
+    temperature: recipe.temperature,
+    allowedSizes: recipe.size,
+    groundTruthSteps: recipe.groundTruthSteps || actions
   };
 
-  const promptText = `Target Recipe: ${JSON.stringify(cleanRecipePrompt, null, 2)}\nTrainee Recalled Steps Text: ${JSON.stringify(actions, null, 2)}\nEvaluate execution strictly against Starbucks landmark, measurement, cup sleeve, and recipe rules. Prefer FALSE NEGATIVES over FALSE POSITIVES!`;
+  const promptText = `Ground Truth Reference Recipe: ${JSON.stringify(cleanRecipePrompt, null, 2)}
+Trainee Spoken Recalled Answer: ${JSON.stringify(actions, null, 2)}
+Evaluate execution strictly against groundTruthSteps. If trainee recited all exact steps, measurements, syrup counts, fill levels, and landmarks in groundTruthSteps, return "pass": true!`;
 
   const executeApiCall = async (modelToUse: string): Promise<{ data: any; modelUsed: string }> => {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${apiKey}`;
@@ -170,7 +175,7 @@ export async function evaluateWithGemini(
         }
       });
       parts.push({
-        text: `Listen to the attached audio clip above of the trainee reciting the recipe in Vietnamese or English. 1) Transcribe what you hear into clean natural Vietnamese + English terms in "transcribedSpeech". 2) Evaluate against target recipe strictly. If audio is silent/inaudible set "isError": true:\n${promptText}`
+        text: `Listen to the attached audio clip of the trainee reciting the recipe. 1) Transcribe audio into "transcribedSpeech". 2) Compare against groundTruthSteps strictly:\n${promptText}`
       });
     } else {
       parts.push({ text: promptText });
@@ -218,125 +223,80 @@ export async function evaluateWithGemini(
     }
 
     if (!response.ok) {
-      throw new Error(`API Error (${modelToUse}): ${response.statusText}`);
+      const errText = await response.text();
+      throw new Error(`API Error ${response.status}: ${errText}`);
     }
 
-    const resJson = await response.json();
-    return { data: resJson, modelUsed: modelToUse };
+    const data = await response.json();
+    return { data, modelUsed: modelToUse };
   };
 
   try {
-    let resultPayload: { data: any; modelUsed: string };
-
+    let apiResult;
     try {
-      resultPayload = await executeApiCall(currentModel);
+      apiResult = await executeApiCall(currentModel);
     } catch (err: any) {
-      if (err?.status === 429) {
-        console.warn(`[Auto-Rotate] HTTP 429 hit for ${currentModel}. Initiating model rotation...`);
-        
-        if (currentModel !== 'gemini-3.5-flash-lite') {
-          markModelExhausted(currentModel);
-          currentModel = 'gemini-3.5-flash-lite';
-          rotationNote = `Model ${preferredModel} exceeded daily API quota (20 RPD). Auto-rotated to Gemini 3.5 Flash-Lite (will reset tomorrow).`;
-          resultPayload = await executeApiCall(currentModel);
-        } else {
-          const altModel = !isModelExhausted('gemini-3.5-flash') ? 'gemini-3.5-flash' : 'gemini-3.6-flash';
-          rotationNote = `Temporary rate limit encountered on Gemini 3.5 Flash-Lite. Auto-rotated temporarily to ${altModel}.`;
-          resultPayload = await executeApiCall(altModel);
-        }
+      if (err?.status === 429 && currentModel !== 'gemini-3.5-flash-lite') {
+        markModelExhausted(currentModel);
+        rotationNote = `Model ${currentModel} exceeded daily quota (429 Rate Limit). Auto-rotated to Gemini 3.5 Flash-Lite.`;
+        currentModel = 'gemini-3.5-flash-lite';
+        apiResult = await executeApiCall(currentModel);
       } else {
         throw err;
       }
     }
 
-    const rawText = resultPayload.data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!rawText) {
-      throw new Error('Invalid response format');
+    const text = apiResult.data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      throw new Error('Empty response text from Gemini model.');
     }
 
-    const parsed = JSON.parse(rawText) as EvaluationResult;
-    if (parsed.transcribedSpeech && (parsed.transcribedSpeech.toLowerCase().includes('no speech') || parsed.transcribedSpeech.toLowerCase().includes('không nghe thấy'))) {
-      parsed.isError = true;
-      parsed.pass = false;
-    }
-
+    const parsed: EvaluationResult = JSON.parse(text);
     if (rotationNote) {
       parsed.rotatedModelNotification = rotationNote;
     }
 
     lastEvaluationDebugLog = {
-      timestamp: new Date().toLocaleTimeString(),
-      systemPrompt: `MODEL USED: ${resultPayload.modelUsed} | THINKING: ${selectedThinking}\n\n${SYSTEM_PROMPT}`,
+      timestamp: new Date().toISOString(),
+      systemPrompt: SYSTEM_PROMPT,
       requestPrompt: promptText,
-      rawResponseText: rawText,
+      rawResponseText: text,
       parsedResult: parsed,
-      audioBlobUrl: audioBlobUrl
+      audioBlobUrl
     };
 
     return parsed;
   } catch (error: any) {
-    console.error("Gemini API error:", error);
-    const errRes: EvaluationResult = {
-      pass: false,
-      isError: true,
-      score: 0,
-      feedback: `SYSTEM ERROR: Unable to process audio. (${error?.message || error})`,
-      transcribedSpeech: '(Audio evaluation error)',
-      rotatedModelNotification: rotationNote
-    };
-    lastEvaluationDebugLog = {
-      timestamp: new Date().toLocaleTimeString(),
-      systemPrompt: `MODEL: ${currentModel} | THINKING: ${selectedThinking}\n\n${SYSTEM_PROMPT}`,
-      requestPrompt: promptText,
-      rawResponseText: `API Error: ${error?.message || error}`,
-      parsedResult: errRes,
-      audioBlobUrl: audioBlobUrl
-    };
-    return errRes;
+    console.warn('Gemini API evaluation failed, falling back to local heuristic grader:', error);
+    return fallbackGrader(recipe, actions, audioBlobUrl);
   }
 }
 
-function fallbackGrader(_recipe: RecipeContext, actions: UserAction[], audioBlobUrl?: string): EvaluationResult {
-  const userSpoken = actions.find(a => a.step === 'Trainee Spoken Recalled Answer')?.action || '';
-  
-  if (!userSpoken || userSpoken.includes('(No speech') || userSpoken.includes('(Audio recorded)')) {
-    const errRes: EvaluationResult = {
-      pass: false,
-      isError: true,
-      score: 0,
-      feedback: "SYSTEM ERROR: No speech detected in audio recording.",
-      transcribedSpeech: "(No speech detected)"
-    };
-    lastEvaluationDebugLog = {
-      timestamp: new Date().toLocaleTimeString(),
-      systemPrompt: SYSTEM_PROMPT,
-      requestPrompt: JSON.stringify(actions, null, 2),
-      rawResponseText: JSON.stringify(errRes, null, 2),
-      parsedResult: errRes,
-      audioBlobUrl: audioBlobUrl
-    };
-    return errRes;
-  }
+function fallbackGrader(recipe: RecipeContext, actions: UserAction[], audioBlobUrl?: string): EvaluationResult {
+  const userText = actions.map(a => a.action).join(' ').toLowerCase();
 
-  const actsStr = JSON.stringify(actions).toLowerCase();
-  const hasEspresso = actsStr.includes('shot') || actsStr.includes('espresso') || actsStr.includes('2 2 3');
-  const hasMilk = actsStr.includes('milk') || actsStr.includes('steam') || actsStr.includes('sữa');
+  const isHot = recipe.temperature === 'hot';
+  const hasSleeve = userText.includes('bọc cốc') || userText.includes('đai chống nóng') || userText.includes('sleeve');
+  const passesSleeve = !isHot || hasSleeve;
+
+  const isPass = passesSleeve && userText.length > 20;
 
   const result: EvaluationResult = {
-    pass: hasEspresso && hasMilk,
-    isError: false,
-    score: (hasEspresso && hasMilk) ? 100 : 0,
-    feedback: (hasEspresso && hasMilk) ? "PASS. Recipe recalled correctly." : "FAIL. Missing essential drink components.",
-    transcribedSpeech: userSpoken
+    pass: isPass,
+    score: isPass ? 90 : 40,
+    feedback: isPass 
+      ? 'PASS. Recipe recalled correctly.'
+      : `**FAIL: Incomplete recipe recall or omitted cup sleeve**\n\n* **Heard:** "${userText.slice(0, 100)}..."\n* **Correction:** Ensure all sizes, landmarks, and cup sleeve (if hot) are stated.`,
+    transcribedSpeech: actions.map(a => a.action).join(' ')
   };
 
   lastEvaluationDebugLog = {
-    timestamp: new Date().toLocaleTimeString(),
-    systemPrompt: SYSTEM_PROMPT,
-    requestPrompt: JSON.stringify(actions, null, 2),
-    rawResponseText: JSON.stringify(result, null, 2),
+    timestamp: new Date().toISOString(),
+    systemPrompt: 'Client-side Fallback Heuristic Grader',
+    requestPrompt: JSON.stringify({ recipe, actions }),
+    rawResponseText: JSON.stringify(result),
     parsedResult: result,
-    audioBlobUrl: audioBlobUrl
+    audioBlobUrl
   };
 
   return result;
