@@ -117,12 +117,10 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
         const textToEvaluate = spokenText || liveTranscript || '(No speech detected)';
 
         try {
-          const isIced = targetRecipe.type === 'iced';
-          const sizeString = isIced ? 'Tall / Grande / Venti (3 sizes ONLY - NO Short size)' : 'Short / Tall / Grande / Venti (4 sizes)';
-
           const result = await evaluateWithGemini(apiKey, {
             drinkName: `${targetRecipe.name} (Mark Cup: ${targetRecipe.code || 'Standard'})`,
-            size: sizeString,
+            size: targetRecipe.sizes?.join(', ') || 'Short, Tall, Grande, Venti',
+            sizes: targetRecipe.sizes,
             temperature: targetRecipe.type,
             groundTruthSteps: {
               steamMilk: targetRecipe.steps.steamMilk,

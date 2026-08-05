@@ -4,6 +4,7 @@
     "name": "Hot Latte (L)",
     "code": "L (HOT)",
     "type": "hot",
+    "sizes": ["Short", "Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "Steam milk: 1-3s",
       "queueShots": "1 2 2 3",
@@ -16,6 +17,7 @@
     "name": "Iced Latte (L)",
     "code": "L (ICED)",
     "type": "iced",
+    "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
       "queueShots": "2 2 3",
@@ -28,6 +30,7 @@
     "name": "Hot Cappuccino (C)",
     "code": "C (HOT)",
     "type": "hot",
+    "sizes": ["Short", "Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "Steam milk: 6-8s (giảm size - trừ Tall/Short)",
       "queueShots": "1 2 2 3",
@@ -40,6 +43,7 @@
     "name": "Iced Cappuccino (C)",
     "code": "C (ICED)",
     "type": "iced",
+    "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "Tall size 6-8s (mọi size đều steam milk ở mức Tall)",
       "queueShots": "2 2 3",
@@ -52,6 +56,7 @@
     "name": "Hot Americano (A)",
     "code": "A (HOT)",
     "type": "hot",
+    "sizes": ["Short", "Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
       "queueShots": "1 2 3 4",
@@ -64,6 +69,7 @@
     "name": "Iced Americano (A)",
     "code": "A (ICED)",
     "type": "iced",
+    "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
       "queueShots": "2 3 4",
@@ -76,6 +82,7 @@
     "name": "Hot Mocha (M)",
     "code": "M (HOT)",
     "type": "hot",
+    "sizes": ["Short", "Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "Steam milk: 1-3s",
       "queueShots": "1 2 2 3",
@@ -88,6 +95,7 @@
     "name": "Iced Mocha (M)",
     "code": "M (ICED)",
     "type": "iced",
+    "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
       "queueShots": "2 2 3",
@@ -100,6 +108,7 @@
     "name": "Hot Caramel Macchiato (CM)",
     "code": "CM (HOT)",
     "type": "hot",
+    "sizes": ["Short", "Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "Steam milk: 1-3s",
       "queueShots": "1 2 2 3",
@@ -112,6 +121,7 @@
     "name": "Iced Caramel Macchiato (CM)",
     "code": "CM (ICED)",
     "type": "iced",
+    "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
       "queueShots": "2 2 3",
@@ -124,6 +134,7 @@
     "name": "Salted Caramel Cold Foam Dolce Espresso (SCDE)",
     "code": "SCDE",
     "type": "iced",
+    "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
       "queueShots": "2 3 4",
@@ -136,6 +147,7 @@
     "name": "Dolce Espresso (DE)",
     "code": "DE",
     "type": "iced",
+    "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
       "queueShots": "2 3 4",
@@ -148,6 +160,7 @@
     "name": "Coconut Dolce Espresso (CDE)",
     "code": "CDE",
     "type": "iced",
+    "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
       "queueShots": "2 3 4",

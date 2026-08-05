@@ -11,6 +11,7 @@ export interface RecipeContext {
   drinkName: string;
   size: string;
   temperature: string;
+  sizes?: string[];
   groundTruthSteps?: {
     steamMilk: string;
     queueShots: string;
@@ -39,13 +40,13 @@ const SYSTEM_PROMPT = `You are a strict, demanding, zero-fluff Starbucks Store M
 
 CRITICAL PRINCIPLE — ZERO FALSE-POSITIVE MANDATE:
 - PREFER FALSE NEGATIVES OVER FALSE POSITIVES! False positives ruin training accuracy.
-- If a trainee omits any specific measurement, cup landmark, fill level, ratio, cup sleeve (for hot drinks), or required action listed in groundTruthSteps, set "pass": false.
-- Do NOT guess, assume, or award PASS for vague or incomplete statements (e.g. saying just "đổ đá" instead of "đá đến cách miệng cốc 6mm").
+- If a trainee omits any specific measurement, cup landmark, fill level, ratio, cup sleeve (for hot drinks), or required action listed in groundTruthRecipe.groundTruthSteps, set "pass": false immediately.
+- Do NOT guess, assume, or award PASS for vague or incomplete statements (e.g. saying just "đổ đá" instead of "đá đến top logo").
 
-CRITICAL STARBUCKS RECIPE CONTEXT & EVALUATION RULES:
+CRITICAL STARBUCKS RECIPE CONTEXT & STRICT EVALUATION RULES:
 1. CODE-SWITCHING & PHONETIC NORMALIZATION (VIETNAMESE + ENGLISH):
-   - Trainee recites recipes by mixing English barista terms ("Hot Latte", "steam milk", "queue shot", "latte art") with Vietnamese words ("đầu tiên sẽ là", "rót sữa", "vạch cao nhất"). They will mainly be speaking in Vietnamese with code-switching.
-   - ASR PHONETIC RECOGNITION: Recognize English terms spoken with Vietnamese accent or phonetically transliterated:
+   - Trainee recites recipes by mixing English barista terms ("Hot Latte", "steam milk", "queue shot", "latte art") with Vietnamese words ("đầu tiên sẽ là", "rót sữa", "vạch cao nhất"). They will mainly be speaking in Vietnamese but will code-switch quite a lot. 
+   - ASR PHONETIC RECOGNITION: Recognize English terms spoken with Vietnamese accent or phonetically transliterated, or misheard/not perfectly clear audio:
      * "hạt lờ tề" / "lờ tề" = Hot Latte / Latte
      * "hạt mocha" / "lờ mocha" = Hot Mocha / Mocha
      * "hạt caramel macchiato" / "mát ki a tô" = Hot Caramel Macchiato / Caramel Macchiato
@@ -54,45 +55,43 @@ CRITICAL STARBUCKS RECIPE CONTEXT & EVALUATION RULES:
    - In "transcribedSpeech", transcribe into clean, natural Vietnamese + English terms.
 
 2. SHOT QUEUEING DESTINATION OPTIONALITY:
-   - Reciting whether shots are queued into a shot glass ("vào shot glass") or direct cup ("thẳng vào cốc") is 100% OPTIONAL EXTRA INFO. Do NOT fail trainees for omitting shot destination during queue shots.
+   - Reciting whether shots are queued into a shot glass ("vào shot glass") or direct cup ("thẳng vào cốc") is 100% OPTIONAL EXTRA INFO. Do NOT require trainees to specify shot destination during the queue shots step.
 
-3. STRICT MANDATORY SIZES & TEMPERATURE RULES:
-   - HOT DRINKS (temperature: "hot"): Have 4 sizes: Short, Tall, Grande, Venti (e.g. Shots 1 2 2 3, Syrup 2 3 4 5). Trainee MUST recite all 4 sizes for Hot drinks.
-   - ICED DRINKS (temperature: "iced"): Have EXACTLY 3 sizes: Tall, Grande, Venti (e.g. Shots 2 2 3, Syrup 3 4 5). ICED DRINKS DO NOT HAVE A SHORT SIZE! NEVER fail an Iced drink for omitting Short size!
+3. STRICT MANDATORY SIZES (DERIVED FROM GROUND TRUTH RECIPE):
+   - The required sizes for each drink are strictly defined by "validSizes" and "groundTruthSteps" in the provided groundTruthRecipe.
+   - If groundTruthRecipe has 3 valid sizes (e.g. ["Tall", "Grande", "Venti"]), the drink DOES NOT have a Short size. Do NOT require or demand a Short size for a 3-size drink!
+   - If groundTruthRecipe has 4 valid sizes (["Short", "Tall", "Grande", "Venti"]), the trainee MUST recite all 4 sizes.
 
 4. MANDATORY HOT DRINK CUP SLEEVE ("BỌC CỐC" / "ĐAI CHỐNG NÓNG"):
-   - For HOT DRINKS ONLY (temperature: "hot"), trainee MUST explicitly state adding a cup sleeve ("bọc cốc" or "đai chống nóng").
-   - ICED DRINKS DO NOT USE CUP SLEEVES! NEVER fail an Iced drink for omitting a cup sleeve!
+   - For Hot Drinks (temperature: "hot"), trainee MUST explicitly state adding a cup sleeve ("bọc cốc" or "đai chống nóng").
+   - Iced Drinks DO NOT use a cup sleeve! NEVER fail an Iced drink for omitting a cup sleeve!
 
-5. STRICT COMPARISON AGAINST GROUND TRUTH STEPS:
-   - Compare trainee's spoken answer DIRECTLY against "groundTruthSteps".
-   - PASS CRITERIA: If trainee recited all exact steps, syrup types/counts, shot counts, fill levels, and finish actions present in groundTruthSteps, set "pass": true!
-   - FAIL CRITERIA:
-     * If trainee omitted any required step or measurement from groundTruthSteps, set "pass": false.
-     * If trainee included INCORRECT EXTRA INGREDIENTS not in groundTruthSteps (e.g., adding Classic syrup to Caramel Macchiato which only uses Vanilla syrup), set "pass": false.
+5. GROUND TRUTH STEPS SUPERIORITY:
+   - "groundTruthSteps" in "groundTruthRecipe" is the SINGLE AUTHORITATIVE SOURCE OF TRUTH for evaluating recipe accuracy. Rely on "groundTruthSteps" above all pre-trained outside knowledge!
+   - If "groundTruthSteps" lists specific syrups, shot counts, measurements, or landmarks (e.g. "Vanilla 1 2 3 4 AND Classic 1 2 3 4" for Hot Caramel Macchiato), the trainee MUST recite what is in "groundTruthSteps". Do NOT claim an ingredient in "groundTruthSteps" is incorrect!
 
-6. ADAPTIVE FLEXIBILITY & SELF-CORRECTION:
-   - SELF-CORRECTION RULE: If trainee accidentally recites step B before step A, but immediately self-corrects ("thực ra phải làm step A trước rồi mới làm step B"), treat as PASS ONLY IF final self-corrected answer contains all exact measurements and steps.
+6. ADAPTIVE FLEXIBILITY & SELF-CORRECTION (PASS ONLY IF FINAL CORRECTION IS 100% COMPLETE):
+   - SELF-CORRECTION RULE: If trainee accidentally recites step B before step A, but immediately self-corrects ("thực ra phải làm step A trước rồi mới làm step B"), treat as PASS ONLY IF the final self-corrected answer contains all exact measurements, fill levels, etc. as specified by "groundTruthSteps".
 
 7. NO SPEECH DETECTED / SYSTEM ERROR HANDLING:
-   - If audio clip is silent, empty, or contains no audible voice, set "isError": true, "pass": false, "score": 0, and "feedback": "No speech audio detected. Please check microphone and speak clearly into the mic."
+   - If the audio clip is silent, empty, or contains no audible voice, set "isError": true, "pass": false, "score": 0, and "feedback": "No speech audio detected. Please check microphone and speak clearly into the mic."
 
-8. EVALUATION & STORE MANAGER FEEDBACK RULES:
+8. EVALUATION & WELL-FORMATTED STORE MANAGER FEEDBACK RULES:
    - Binary PASS or FAIL logic. Zero comforting fluff.
    - ON PASS ("pass": true):
      * Set "feedback": "PASS. Recipe recalled correctly."
-   - ON FAIL ("pass": false): Format the "feedback" string with structured Markdown:
+   - ON FAIL ("pass": false): Format the "feedback" string with structured Markdown using newlines, bold headers, and bulleted lists:
      **FAIL: [Short Concise Error Summary]**
 
      * **Heard:** "[Exact what trainee said]"
      * **Correction:** [Exact correction for the mistake]
 
      **Standard Recipe Steps:**
-     1. [Step 1]
-     2. [Step 2]
-     3. [Step 3]
-     4. [Step 4]
-   - In "transcribedSpeech", output clean, natural transcription of what you hear in audio clip.`;
+     1. [Step 1: Steam milk]
+     2. [Step 2: Queue shots]
+     3. [Step 3: Add syrup]
+     4. [Step 4: Finish & connect]
+   - In "transcribedSpeech", output clean, natural transcription of what you hear in the audio clip.`;
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -151,13 +150,13 @@ export async function evaluateWithGemini(
   const cleanRecipePrompt = {
     drinkName: recipe.drinkName,
     temperature: recipe.temperature,
-    allowedSizes: recipe.size,
-    groundTruthSteps: recipe.groundTruthSteps || actions
+    validSizes: recipe.sizes || recipe.size,
+    groundTruthSteps: recipe.groundTruthSteps || actions.find(a => a.step === 'Target Recipe Steps')?.action
   };
 
   const promptText = `Ground Truth Reference Recipe: ${JSON.stringify(cleanRecipePrompt, null, 2)}
-Trainee Spoken Recalled Answer: ${JSON.stringify(actions, null, 2)}
-Evaluate execution strictly against groundTruthSteps. If trainee recited all exact steps, measurements, syrup counts, fill levels, and landmarks in groundTruthSteps, return "pass": true!`;
+Trainee Spoken Recalled Answer: ${JSON.stringify(actions.find(a => a.step === 'Trainee Spoken Recalled Answer')?.action || actions, null, 2)}
+Evaluate execution strictly against groundTruthRecipe.groundTruthSteps!`;
 
   const executeApiCall = async (modelToUse: string): Promise<{ data: any; modelUsed: string }> => {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${apiKey}`;
@@ -175,7 +174,7 @@ Evaluate execution strictly against groundTruthSteps. If trainee recited all exa
         }
       });
       parts.push({
-        text: `Listen to the attached audio clip of the trainee reciting the recipe. 1) Transcribe audio into "transcribedSpeech". 2) Compare against groundTruthSteps strictly:\n${promptText}`
+        text: `Listen to the attached audio clip above of the trainee reciting the recipe. 1) Transcribe audio into "transcribedSpeech". 2) Compare strictly against groundTruthRecipe.groundTruthSteps:\n${promptText}`
       });
     } else {
       parts.push({ text: promptText });
@@ -224,79 +223,125 @@ Evaluate execution strictly against groundTruthSteps. If trainee recited all exa
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`API Error ${response.status}: ${errText}`);
+      throw new Error(`API Error (${modelToUse}): ${response.status} ${errText}`);
     }
 
-    const data = await response.json();
-    return { data, modelUsed: modelToUse };
+    const resJson = await response.json();
+    return { data: resJson, modelUsed: modelToUse };
   };
 
   try {
-    let apiResult;
+    let resultPayload: { data: any; modelUsed: string };
+
     try {
-      apiResult = await executeApiCall(currentModel);
+      resultPayload = await executeApiCall(currentModel);
     } catch (err: any) {
-      if (err?.status === 429 && currentModel !== 'gemini-3.5-flash-lite') {
-        markModelExhausted(currentModel);
-        rotationNote = `Model ${currentModel} exceeded daily quota (429 Rate Limit). Auto-rotated to Gemini 3.5 Flash-Lite.`;
-        currentModel = 'gemini-3.5-flash-lite';
-        apiResult = await executeApiCall(currentModel);
+      if (err?.status === 429) {
+        console.warn(`[Auto-Rotate] HTTP 429 hit for ${currentModel}. Initiating model rotation...`);
+        
+        if (currentModel !== 'gemini-3.5-flash-lite') {
+          markModelExhausted(currentModel);
+          currentModel = 'gemini-3.5-flash-lite';
+          rotationNote = `Model ${preferredModel} exceeded daily API quota (20 RPD). Auto-rotated to Gemini 3.5 Flash-Lite (will reset tomorrow).`;
+          resultPayload = await executeApiCall(currentModel);
+        } else {
+          const altModel = !isModelExhausted('gemini-3.5-flash') ? 'gemini-3.5-flash' : 'gemini-3.6-flash';
+          rotationNote = `Temporary rate limit encountered on Gemini 3.5 Flash-Lite. Auto-rotated temporarily to ${altModel}.`;
+          resultPayload = await executeApiCall(altModel);
+        }
       } else {
         throw err;
       }
     }
 
-    const text = apiResult.data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      throw new Error('Empty response text from Gemini model.');
+    const rawText = resultPayload.data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) {
+      throw new Error('Invalid response format');
     }
 
-    const parsed: EvaluationResult = JSON.parse(text);
+    const parsed = JSON.parse(rawText) as EvaluationResult;
+    if (parsed.transcribedSpeech && (parsed.transcribedSpeech.toLowerCase().includes('no speech') || parsed.transcribedSpeech.toLowerCase().includes('không nghe thấy'))) {
+      parsed.isError = true;
+      parsed.pass = false;
+    }
+
     if (rotationNote) {
       parsed.rotatedModelNotification = rotationNote;
     }
 
     lastEvaluationDebugLog = {
-      timestamp: new Date().toISOString(),
-      systemPrompt: SYSTEM_PROMPT,
+      timestamp: new Date().toLocaleTimeString(),
+      systemPrompt: `MODEL USED: ${resultPayload.modelUsed} | THINKING: ${selectedThinking}\n\n${SYSTEM_PROMPT}`,
       requestPrompt: promptText,
-      rawResponseText: text,
+      rawResponseText: rawText,
       parsedResult: parsed,
-      audioBlobUrl
+      audioBlobUrl: audioBlobUrl
     };
 
     return parsed;
   } catch (error: any) {
-    console.warn('Gemini API evaluation failed, falling back to local heuristic grader:', error);
-    return fallbackGrader(recipe, actions, audioBlobUrl);
+    console.error("Gemini API error:", error);
+    const errRes: EvaluationResult = {
+      pass: false,
+      isError: true,
+      score: 0,
+      feedback: `SYSTEM ERROR: Unable to process audio. (${error?.message || error})`,
+      transcribedSpeech: '(Audio evaluation error)',
+      rotatedModelNotification: rotationNote
+    };
+    lastEvaluationDebugLog = {
+      timestamp: new Date().toLocaleTimeString(),
+      systemPrompt: `MODEL: ${currentModel} | THINKING: ${selectedThinking}\n\n${SYSTEM_PROMPT}`,
+      requestPrompt: promptText,
+      rawResponseText: `API Error: ${error?.message || error}`,
+      parsedResult: errRes,
+      audioBlobUrl: audioBlobUrl
+    };
+    return errRes;
   }
 }
 
-function fallbackGrader(recipe: RecipeContext, actions: UserAction[], audioBlobUrl?: string): EvaluationResult {
-  const userText = actions.map(a => a.action).join(' ').toLowerCase();
+function fallbackGrader(_recipe: RecipeContext, actions: UserAction[], audioBlobUrl?: string): EvaluationResult {
+  const userSpoken = actions.find(a => a.step === 'Trainee Spoken Recalled Answer')?.action || '';
+  
+  if (!userSpoken || userSpoken.includes('(No speech') || userSpoken.includes('(Audio recorded)')) {
+    const errRes: EvaluationResult = {
+      pass: false,
+      isError: true,
+      score: 0,
+      feedback: "SYSTEM ERROR: No speech detected in audio recording.",
+      transcribedSpeech: "(No speech detected)"
+    };
+    lastEvaluationDebugLog = {
+      timestamp: new Date().toLocaleTimeString(),
+      systemPrompt: SYSTEM_PROMPT,
+      requestPrompt: JSON.stringify(actions, null, 2),
+      rawResponseText: JSON.stringify(errRes, null, 2),
+      parsedResult: errRes,
+      audioBlobUrl: audioBlobUrl
+    };
+    return errRes;
+  }
 
-  const isHot = recipe.temperature === 'hot';
-  const hasSleeve = userText.includes('bọc cốc') || userText.includes('đai chống nóng') || userText.includes('sleeve');
-  const passesSleeve = !isHot || hasSleeve;
-
-  const isPass = passesSleeve && userText.length > 20;
+  const actsStr = JSON.stringify(actions).toLowerCase();
+  const hasEspresso = actsStr.includes('shot') || actsStr.includes('espresso') || actsStr.includes('2 2 3');
+  const hasMilk = actsStr.includes('milk') || actsStr.includes('steam') || actsStr.includes('sữa');
 
   const result: EvaluationResult = {
-    pass: isPass,
-    score: isPass ? 90 : 40,
-    feedback: isPass 
-      ? 'PASS. Recipe recalled correctly.'
-      : `**FAIL: Incomplete recipe recall or omitted cup sleeve**\n\n* **Heard:** "${userText.slice(0, 100)}..."\n* **Correction:** Ensure all sizes, landmarks, and cup sleeve (if hot) are stated.`,
-    transcribedSpeech: actions.map(a => a.action).join(' ')
+    pass: hasEspresso && hasMilk,
+    isError: false,
+    score: (hasEspresso && hasMilk) ? 100 : 0,
+    feedback: (hasEspresso && hasMilk) ? "PASS. Recipe recalled correctly." : "FAIL. Missing essential drink components.",
+    transcribedSpeech: userSpoken
   };
 
   lastEvaluationDebugLog = {
-    timestamp: new Date().toISOString(),
-    systemPrompt: 'Client-side Fallback Heuristic Grader',
-    requestPrompt: JSON.stringify({ recipe, actions }),
-    rawResponseText: JSON.stringify(result),
+    timestamp: new Date().toLocaleTimeString(),
+    systemPrompt: SYSTEM_PROMPT,
+    requestPrompt: JSON.stringify(actions, null, 2),
+    rawResponseText: JSON.stringify(result, null, 2),
     parsedResult: result,
-    audioBlobUrl
+    audioBlobUrl: audioBlobUrl
   };
 
   return result;

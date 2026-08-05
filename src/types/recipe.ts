@@ -16,6 +16,7 @@ export interface Recipe {
   name: string;
   code?: string;
   type: 'hot' | 'iced';
+  sizes: string[];
   steps: StandardSteps;
   srs?: SRSItem;
 }
