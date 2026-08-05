@@ -6,6 +6,7 @@ export interface WeightData {
   correctCount: number;
   incorrectCount: number;
   turnsSinceLastGraded: number;
+  consecutiveCorrect?: number;
   lastGradedTimestamp?: number;
   lastSpeedMs?: number;
 }
@@ -53,10 +54,18 @@ export class SRSEngine {
     };
 
     if (pass) {
-      item.weight = Math.max(10, Math.round(item.weight * 0.65));
+      item.consecutiveCorrect = (item.consecutiveCorrect || 0) + 1;
+      let multiplier = 0.65;
+      if (item.consecutiveCorrect === 2) {
+        multiplier = 0.50;
+      } else if (item.consecutiveCorrect >= 3) {
+        multiplier = 0.40;
+      }
+      item.weight = Math.max(15, Math.round(item.weight * multiplier));
       item.correctCount = (item.correctCount || 0) + 1;
     } else {
-      item.weight = Math.min(250, Math.round(item.weight * 2.2));
+      item.consecutiveCorrect = 0;
+      item.weight = Math.min(250, Math.max(120, Math.round(item.weight * 1.8)));
       item.incorrectCount = (item.incorrectCount || 0) + 1;
     }
 
@@ -64,11 +73,18 @@ export class SRSEngine {
     item.lastGradedTimestamp = Date.now();
     if (speedMs) item.lastSpeedMs = speedMs;
 
+    const deckSize = Math.max(1, allRecipeIds.length);
+    const idleThreshold = Math.max(3, Math.floor(deckSize * 0.75));
+
     allRecipeIds.forEach(rid => {
       if (rid !== id && all[rid]) {
         all[rid].turnsSinceLastGraded += 1;
-        if (all[rid].turnsSinceLastGraded >= 3 && all[rid].weight > 35) {
-          all[rid].weight = Math.min(250, Math.round(all[rid].weight * 1.08));
+        if (all[rid].turnsSinceLastGraded >= idleThreshold) {
+          if (all[rid].weight <= 35) {
+            all[rid].weight = Math.min(250, Math.round(all[rid].weight * 1.03));
+          } else {
+            all[rid].weight = Math.min(250, Math.round(all[rid].weight * 1.05));
+          }
         }
       }
     });
