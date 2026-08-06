@@ -535,8 +535,10 @@ export class SRSEngine {
   static async pushToCloud() {
     const code = this.getSyncCode();
     if (!code) return { success: false, message: 'No sync code active.' };
-    const blobId = await this.resolveBlobIdFromCode(code);
-    if (!blobId) return { success: false, message: 'Could not resolve cloud channel.' };
+    let blobId = await this.resolveBlobIdFromCode(code);
+    if (!blobId) {
+      return await this.createNewSyncChannel(code, true);
+    }
 
     const all = this.loadAll();
     const payload = {
