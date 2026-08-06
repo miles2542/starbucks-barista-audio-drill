@@ -1,7 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Recipe } from '../types/recipe';
 import { SRSEngine, type WeightData } from '../services/srsEngine';
-import { Activity, Award, Zap, ShieldCheck, ArrowUpDown } from 'lucide-react';
+import { HistoryEngine, type RecitationLog } from '../services/historyEngine';
+import type { EvaluationDebugLog } from '../services/geminiGrader';
+import { Activity, Award, Zap, ShieldCheck, ArrowUpDown, History, Play, Terminal, XCircle, Info } from 'lucide-react';
+
+function FormattedFeedbackText({ text, pass }: { text: string; pass: boolean }) {
+  if (!text) return null;
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.92rem', lineHeight: '1.5' }}>
+      {lines.map((line, idx) => {
+        if (line.startsWith('**FAIL:') || line.startsWith('**PASS:')) {
+          const cleanHeader = line.replace(/\*\*/g, '');
+          return (
+            <div key={idx} style={{ fontWeight: 800, fontSize: '1rem', color: pass ? 'var(--accent-mint)' : 'var(--status-fail)', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px' }}>
+              {cleanHeader}
+            </div>
+          );
+        }
+        if (line.startsWith('* ') || line.startsWith('- ')) {
+          const cleanLine = line.replace(/^[\*\-]\s+/, '');
+          const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', paddingLeft: '4px' }}>
+              <span style={{ color: pass ? 'var(--accent-mint)' : 'var(--status-fail)', fontWeight: 800 }}>•</span>
+              <div>
+                {parts.map((p, pIdx) => {
+                  if (p.startsWith('**') && p.endsWith('**')) {
+                    return <strong key={pIdx} style={{ color: '#FFF' }}>{p.replace(/\*\*/g, '')}</strong>;
+                  }
+                  return <span key={pIdx} style={{ color: 'var(--text-main)' }}>{p}</span>;
+                })}
+              </div>
+            </div>
+          );
+        }
+        if (line.startsWith('**') && line.endsWith('**')) {
+          return (
+            <div key={idx} style={{ fontWeight: 700, color: 'var(--text-muted)', marginTop: '0.25rem', fontSize: '0.82rem', letterSpacing: '0.5px' }}>
+              {line.replace(/\*\*/g, '')}
+            </div>
+          );
+        }
+        const numMatch = line.match(/^(\d+)\.\s+(.*)/);
+        if (numMatch) {
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', paddingLeft: '8px', color: 'var(--text-main)' }}>
+              <span style={{ fontWeight: 700, color: 'var(--accent-mint)', minWidth: '18px' }}>{numMatch[1]}.</span>
+              <span>{numMatch[2]}</span>
+            </div>
+          );
+        }
+        return (
+          <div key={idx} style={{ color: 'var(--text-main)' }}>
+            {line}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 interface SRSDashboardProps {
   recipes: Recipe[];
@@ -25,8 +84,47 @@ interface RecipeItemMetrics {
 }
 
 export function SRSDashboard({ recipes }: SRSDashboardProps) {
-  const [filterStatus, setFilterStatus] = useState<'all' | 'mastered' | 'learning' | 'practice'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'mastered' | 'learning' | 'practice' | 'all-history'>('all');
   const [sortBy, setSortBy] = useState<'grouped' | 'weight-desc' | 'confidence-asc' | 'reviews-desc' | 'name-asc'>('grouped');
+
+  const [historyLogs, setHistoryLogs] = useState<RecitationLog[]>([]);
+  const [historySort, setHistorySort] = useState<'newest' | 'oldest'>('newest');
+  const [historyResultFilter, setHistoryResultFilter] = useState<'all' | 'pass' | 'fail'>('all');
+  const [selectedRecipeHistoryId, setSelectedRecipeHistoryId] = useState<string | null>(null);
+  const [debugLogModal, setDebugLogModal] = useState<EvaluationDebugLog | null>(null);
+  const [toastNotification, setToastNotification] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHistoryLogs(HistoryEngine.getAllLogs());
+  }, []);
+
+  const refreshLogs = () => {
+    setHistoryLogs(HistoryEngine.getAllLogs());
+  };
+
+  const playAudio = async (audioId: string | undefined) => {
+    if (!audioId) {
+      alert("No audio recorded for this drill.");
+      return;
+    }
+    const blob = await HistoryEngine.getAudioBlob(audioId);
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.play();
+    } else {
+      alert("Audio blob not found.");
+    }
+  };
+
+  const handleRevertGrade = (log: RecitationLog) => {
+    const allIds = recipes.map(r => r.id);
+    SRSEngine.revertAndReGrade(log.recipeId, !log.pass, allIds);
+    HistoryEngine.updateLogGrade(log.id, !log.pass);
+    refreshLogs();
+    setToastNotification(`Grade corrected to ${!log.pass ? 'PASS' : 'FAIL'}`);
+    setTimeout(() => setToastNotification(null), 3000);
+  };
 
   const srsData = SRSEngine.loadAll();
 
@@ -88,6 +186,7 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
     if (filterStatus === 'mastered') return g.masteryStatus === 'Mastered';
     if (filterStatus === 'learning') return g.masteryStatus === 'Learning';
     if (filterStatus === 'practice') return g.masteryStatus === 'Needs Practice';
+    if (filterStatus === 'all-history') return false;
     return true;
   });
 
@@ -242,6 +341,21 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
           >
             Needs Practice ({items.filter(g => g.masteryStatus === 'Needs Practice').length})
           </button>
+          <button
+            onClick={() => setFilterStatus('all-history')}
+            style={{
+              padding: '0.35rem 0.75rem',
+              borderRadius: '6px',
+              border: 'none',
+              background: filterStatus === 'all-history' ? 'rgba(139, 92, 246, 0.2)' : 'transparent',
+              color: filterStatus === 'all-history' ? '#8B5CF6' : 'var(--text-muted)',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            All History ({historyLogs.length})
+          </button>
         </div>
 
         {/* Sort Selector */}
@@ -284,6 +398,7 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
                 <th style={{ padding: '0.85rem 1rem' }}>Accuracy</th>
                 <th style={{ padding: '0.85rem 1rem' }}>Last Drilled</th>
                 <th style={{ padding: '0.85rem 1rem' }}>Status</th>
+                <th style={{ padding: '0.85rem 1rem' }}>History</th>
               </tr>
             </thead>
             <tbody>
@@ -368,6 +483,18 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
                     </span>
                   </td>
 
+                  {/* History Button */}
+                  <td style={{ padding: '0.85rem 1rem' }}>
+                    <button
+                      onClick={() => setSelectedRecipeHistoryId(g.recipe.id)}
+                      style={{
+                        padding: '4px 8px', borderRadius: '4px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                        color: 'var(--text-main)', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
+                      }}
+                    >
+                      <History size={12}/> History ({HistoryEngine.getLogsForRecipe(g.recipe.id).length})
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -421,6 +548,16 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
                 </span>
               </div>
             </div>
+
+            <button
+              onClick={() => setSelectedRecipeHistoryId(g.recipe.id)}
+              style={{
+                width: '100%', padding: '0.6rem', borderRadius: '6px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                color: 'var(--text-main)', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+              }}
+            >
+              <History size={14}/> View History ({HistoryEngine.getLogsForRecipe(g.recipe.id).length})
+            </button>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 700 }}>
@@ -443,6 +580,127 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
           </div>
         ))}
       </div>
+
+      {toastNotification && (
+        <div style={{ position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(5, 150, 105, 0.9)', border: '1px solid var(--accent-mint)', padding: '0.85rem 1.25rem', borderRadius: '8px', fontSize: '0.85rem', color: '#FFF', display: 'flex', alignItems: 'center', gap: '10px', zIndex: 9999 }}>
+          <Info size={18} /> <span>{toastNotification}</span>
+        </div>
+      )}
+
+      {filterStatus === 'all-history' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', background: 'var(--bg-primary)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <select value={historySort} onChange={e => setHistorySort(e.target.value as any)} style={{ background: 'var(--bg-surface)', color: '#FFF', border: '1px solid var(--border-subtle)', padding: '0.4rem', borderRadius: '6px' }}>
+                <option value="newest">Most Recent First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+              <select value={historyResultFilter} onChange={e => setHistoryResultFilter(e.target.value as any)} style={{ background: 'var(--bg-surface)', color: '#FFF', border: '1px solid var(--border-subtle)', padding: '0.4rem', borderRadius: '6px' }}>
+                <option value="all">All Results</option>
+                <option value="pass">Pass Only</option>
+                <option value="fail">Fail Only</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {historyLogs
+              .filter(l => historyResultFilter === 'all' ? true : historyResultFilter === 'pass' ? l.pass : !l.pass)
+              .sort((a, b) => historySort === 'newest' ? b.timestamp - a.timestamp : a.timestamp - b.timestamp)
+              .map(log => (
+                <div key={log.id} className="card" style={{ padding: '1rem', borderLeft: `4px solid ${log.pass ? 'var(--accent-mint)' : 'var(--status-fail)'}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#FFF' }}>{log.recipeName} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>({log.recipeCode || 'Std'})</span></h3>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{formatRelativeTime(log.timestamp)}</div>
+                    </div>
+                    <div style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, background: log.pass ? 'rgba(5, 150, 105, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: log.pass ? 'var(--accent-mint)' : 'var(--status-fail)' }}>
+                      {log.pass ? 'PASS' : 'FAIL'}
+                    </div>
+                  </div>
+                  <div style={{ margin: '0.75rem 0', fontSize: '0.85rem', color: 'var(--text-main)', background: 'var(--bg-primary)', padding: '0.75rem', borderRadius: '6px' }}>
+                    <span style={{ color: 'var(--accent-mint)', fontWeight: 700 }}>Transcript: </span>{log.transcript}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <button onClick={() => setDebugLogModal(log.debugLog)} style={{ padding: '6px 12px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-main)', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}><Terminal size={14}/> View Debug Log</button>
+                    <button onClick={() => playAudio(log.audioId)} disabled={!log.audioId} style={{ padding: '6px 12px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-main)', borderRadius: '6px', fontSize: '0.8rem', cursor: log.audioId ? 'pointer' : 'not-allowed', opacity: log.audioId ? 1 : 0.5, display: 'flex', alignItems: 'center', gap: '4px' }}><Play size={14}/> Play Audio</button>
+                    <button onClick={() => handleRevertGrade(log)} style={{ padding: '6px 12px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-main)', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}><ArrowUpDown size={14}/> Mark {log.pass ? 'Fail' : 'Pass'}</button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {selectedRecipeHistoryId && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div className="card" style={{ maxWidth: '650px', width: '100%', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#FFF' }}>
+                History: {recipes.find(r => r.id === selectedRecipeHistoryId)?.name}
+              </h3>
+              <button onClick={() => setSelectedRecipeHistoryId(null)} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer' }}><XCircle size={20} /></button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {historyLogs.filter(l => l.recipeId === selectedRecipeHistoryId).sort((a,b)=>b.timestamp - a.timestamp).map(log => (
+                <div key={log.id} style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '1rem', background: 'var(--bg-primary)', borderLeft: `4px solid ${log.pass ? 'var(--accent-mint)' : 'var(--status-fail)'}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{formatRelativeTime(log.timestamp)}</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: log.pass ? 'var(--accent-mint)' : 'var(--status-fail)' }}>{log.pass ? 'PASS' : 'FAIL'}</span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>{log.transcript}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <button onClick={() => setDebugLogModal(log.debugLog)} style={{ padding: '4px 8px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-main)', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}><Terminal size={12}/> Log</button>
+                    <button onClick={() => playAudio(log.audioId)} disabled={!log.audioId} style={{ padding: '4px 8px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-main)', borderRadius: '4px', fontSize: '0.75rem', cursor: log.audioId ? 'pointer' : 'not-allowed', opacity: log.audioId ? 1 : 0.5, display: 'flex', alignItems: 'center', gap: '4px' }}><Play size={12}/> Audio</button>
+                    <button onClick={() => handleRevertGrade(log)} style={{ padding: '4px 8px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-main)', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}><ArrowUpDown size={12}/> Mark {log.pass ? 'Fail' : 'Pass'}</button>
+                  </div>
+                </div>
+              ))}
+              {historyLogs.filter(l => l.recipeId === selectedRecipeHistoryId).length === 0 && (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No history for this recipe yet.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {debugLogModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '1rem' }}>
+          <div className="card" style={{ maxWidth: '650px', width: '100%', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Terminal size={18} /> Evaluation Debug Log ({debugLogModal.timestamp})
+              </h3>
+              <button onClick={() => setDebugLogModal(null)} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer' }}>
+                <XCircle size={20} />
+              </button>
+            </div>
+            
+            <div style={{ padding: '1rem', background: 'var(--bg-primary)', borderRadius: '6px' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px' }}>Store Manager Feedback:</div>
+              <FormattedFeedbackText text={debugLogModal.rawResponseText || ''} pass={true} />
+            </div>
+
+            {debugLogModal.audioBlobUrl && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>Recorded Audio Playback:</div>
+                <audio controls src={debugLogModal.audioBlobUrl} style={{ width: '100%' }} />
+              </div>
+            )}
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px' }}>System Prompt Persona:</div>
+              <pre style={{ background: 'var(--bg-primary)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-muted)', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>{debugLogModal.systemPrompt}</pre>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px' }}>Request Prompt:</div>
+              <pre style={{ background: 'var(--bg-primary)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-main)', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>{debugLogModal.requestPrompt}</pre>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px' }}>Raw Gemini JSON Response:</div>
+              <pre style={{ background: 'var(--bg-primary)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--accent-mint)', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>{debugLogModal.rawResponseText}</pre>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
