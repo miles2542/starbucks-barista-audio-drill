@@ -116,7 +116,9 @@ export function Navbar({ activeTab, setActiveTab, dueCount }: NavbarProps) {
         display: 'flex',
         background: 'var(--bg-surface)',
         borderTop: '1px solid var(--border-subtle)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingBottom: 'max(6px, env(safe-area-inset-bottom))',
+        boxSizing: 'border-box',
+        width: '100%',
         zIndex: 100,
         boxShadow: '0 -4px 10px rgba(0,0,0,0.2)'
       }}>

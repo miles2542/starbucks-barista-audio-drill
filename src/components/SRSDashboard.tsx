@@ -263,7 +263,7 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
           </h1>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div style={{ 
             padding: '0.5rem 0.85rem', 
             background: 'rgba(5, 150, 105, 0.15)', 
@@ -351,7 +351,7 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         
         {/* Status Filter Tabs */}
-        <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-primary)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', background: 'var(--bg-primary)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
           <button
             onClick={() => setFilterStatus('all')}
             style={{
@@ -415,7 +415,7 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
         </div>
 
         {/* Sort Selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', maxWidth: '100%' }}>
           <ArrowUpDown size={14} style={{ color: 'var(--text-muted)' }} />
           <select
             value={sortBy}
@@ -428,7 +428,8 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
               borderRadius: '6px',
               fontSize: '0.8rem',
               fontWeight: 600,
-              cursor: 'pointer'
+              cursor: 'pointer',
+              maxWidth: '100%'
             }}
           >
             <option value="grouped">Sort: Cohesive Drink Grouping (Hot/Iced Adjacent)</option>
@@ -709,8 +710,8 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
       )}
 
       {selectedRecipeHistoryId && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-          <div className="card" style={{ maxWidth: '650px', width: '100%', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem', boxSizing: 'border-box', backdropFilter: 'blur(4px)' }}>
+          <div className="card" style={{ maxWidth: '500px', width: '100%', maxHeight: '85vh', overflowY: 'auto', borderRadius: '12px', margin: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#FFF' }}>
                 History: {recipes.find(r => r.id === selectedRecipeHistoryId)?.name}
@@ -741,8 +742,8 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
       )}
 
       {debugLogModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '1rem' }}>
-          <div className="card" style={{ maxWidth: '650px', width: '100%', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '1rem', boxSizing: 'border-box', backdropFilter: 'blur(4px)' }}>
+          <div className="card" style={{ maxWidth: '500px', width: '100%', maxHeight: '85vh', overflowY: 'auto', borderRadius: '12px', margin: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Terminal size={18} /> Evaluation Debug Log ({debugLogModal.timestamp})

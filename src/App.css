@@ -182,3 +182,25 @@
     border-right-color: var(--border);
   }
 }
+
+#root, body, html {
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.app-container {
+  max-width: 100%;
+  box-sizing: border-box;
+  padding-bottom: max(80px, calc(70px + env(safe-area-inset-bottom)));
+}
+
+.srs-table-container {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+* {
+  box-sizing: border-box;
+}
+
