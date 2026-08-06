@@ -253,11 +253,18 @@ export class SRSEngine {
       const parts = clean.split('/');
       return parts[parts.length - 1];
     }
+    
+    const masterIndex = await this.fetchMasterIndex();
+    const masterBlobId = masterIndex[clean.toUpperCase()];
+    if (masterBlobId) {
+      localStorage.setItem(`starbucks_srs_blob_${clean.toUpperCase()}`, masterBlobId);
+      return masterBlobId;
+    }
+
     const localMapped = localStorage.getItem(`starbucks_srs_blob_${clean.toUpperCase()}`);
     if (localMapped) return localMapped;
 
-    const masterIndex = await this.fetchMasterIndex();
-    return masterIndex[clean.toUpperCase()] || null;
+    return null;
   }
 
   // Real Cloud Check 1: Register brand-new channel
@@ -396,11 +403,27 @@ export class SRSEngine {
       disabledRecipes: this.getDisabledRecipeIds()
     };
     try {
-      await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
+      const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      if (res.status === 404 || !res.ok) {
+        const createRes = await fetch(`https://jsonblob.com/api/jsonBlob`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (createRes.ok) {
+          const location = createRes.headers.get('Location');
+          if (location) {
+            const parts = location.split('/');
+            const newBlobId = parts[parts.length - 1];
+            await this.updateMasterIndex(code, newBlobId);
+            localStorage.setItem('starbucks_srs_blob_' + code.toUpperCase(), newBlobId);
+          }
+        }
+      }
     } catch (e) {
       console.error('Failed to push sync', e);
     }
@@ -409,11 +432,24 @@ export class SRSEngine {
   static async pullSync() {
     const code = this.getSyncCode();
     if (!code) return;
-    const blobId = await this.resolveBlobIdFromCode(code);
+    let blobId = await this.resolveBlobIdFromCode(code);
     if (!blobId) return;
 
     try {
-      const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, { cache: 'no-cache' });
+      let res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, { cache: 'no-cache' });
+      if (res.status === 404) {
+        localStorage.removeItem('starbucks_srs_blob_' + code.toUpperCase());
+        const masterIndex = await this.fetchMasterIndex();
+        const masterBlobId = masterIndex[code.toUpperCase()];
+        if (masterBlobId && masterBlobId !== blobId) {
+          blobId = masterBlobId;
+          res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, { cache: 'no-cache' });
+        }
+        if (res.status === 404) {
+          console.error(`Channel '${code}' expired on cloud. Click 'Push to Cloud' on your primary device to re-publish.`);
+          return;
+        }
+      }
       if (!res.ok) return;
       const remoteData: any = await res.json();
       const remoteAll: Record<string, WeightData> = remoteData.weights || remoteData;
@@ -514,6 +550,21 @@ export class SRSEngine {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      if (res.status === 404 || !res.ok) {
+        const createRes = await fetch(`https://jsonblob.com/api/jsonBlob`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!createRes.ok) throw new Error('Failed to create new cloud storage blob');
+        const location = createRes.headers.get('Location');
+        if (!location) throw new Error('No Location header returned from cloud server');
+        const parts = location.split('/');
+        const newBlobId = parts[parts.length - 1];
+        await this.updateMasterIndex(code, newBlobId);
+        localStorage.setItem('starbucks_srs_blob_' + code.toUpperCase(), newBlobId);
+        return { success: true, message: 'Cloud channel re-established & local progress uploaded!' };
+      }
       if (res.ok) {
         return { success: true, message: 'Successfully pushed local progress to cloud.' };
       }
@@ -526,11 +577,23 @@ export class SRSEngine {
   static async downloadFromCloud() {
     const code = this.getSyncCode();
     if (!code) return { success: false, message: 'No sync code active.' };
-    const blobId = await this.resolveBlobIdFromCode(code);
+    let blobId = await this.resolveBlobIdFromCode(code);
     if (!blobId) return { success: false, message: 'Could not resolve cloud channel.' };
 
     try {
-      const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, { cache: 'no-cache' });
+      let res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, { cache: 'no-cache' });
+      if (res.status === 404) {
+        localStorage.removeItem('starbucks_srs_blob_' + code.toUpperCase());
+        const masterIndex = await this.fetchMasterIndex();
+        const masterBlobId = masterIndex[code.toUpperCase()];
+        if (masterBlobId && masterBlobId !== blobId) {
+          blobId = masterBlobId;
+          res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, { cache: 'no-cache' });
+        }
+        if (res.status === 404) {
+          return { success: false, message: `Channel '${code}' expired on cloud. Click 'Push to Cloud' on your primary device to re-publish.` };
+        }
+      }
       if (!res.ok) return { success: false, message: 'Failed to download from cloud server.' };
       const remoteData: any = await res.json();
       const remoteAll: Record<string, WeightData> = remoteData.weights || remoteData;
