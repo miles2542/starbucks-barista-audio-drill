@@ -14,7 +14,6 @@ export interface WeightData {
 
 export class SRSEngine {
   private static STORAGE_KEY = 'starbucks_srs_weights';
-  private static MASTER_INDEX_BLOB_ID = '019fcd83-3d4a-7924-a444-3f85f9cdc26c';
 
   static getDisabledRecipeIds(): string[] {
     const saved = localStorage.getItem('starbucks_disabled_recipes');
@@ -219,11 +218,28 @@ export class SRSEngine {
     window.dispatchEvent(new Event('starbucks_srs_sync_updated'));
   }
 
+  private static MASTER_INDEX_BLOB_ID = localStorage.getItem('starbucks_master_index_id') || '019fd739-8d3a-7f5e-bf8e-7a29c576b5d8';
+
   // Master Index Cloud Registry helpers
   private static async fetchMasterIndex(): Promise<Record<string, string>> {
     try {
-      const res = await fetch(`https://jsonblob.com/api/jsonBlob/${this.MASTER_INDEX_BLOB_ID}`, { cache: 'no-cache' });
-      if (!res.ok) return {};
+      let res = await fetch(`https://jsonblob.com/api/jsonBlob/${this.MASTER_INDEX_BLOB_ID}`, { cache: 'no-cache' });
+      if (res.status === 404 || !res.ok) {
+        const createRes = await fetch(`https://jsonblob.com/api/jsonBlob`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        if (createRes.ok) {
+          const loc = createRes.headers.get('Location');
+          if (loc) {
+            const parts = loc.split('/');
+            this.MASTER_INDEX_BLOB_ID = parts[parts.length - 1];
+            localStorage.setItem('starbucks_master_index_id', this.MASTER_INDEX_BLOB_ID);
+          }
+        }
+        return {};
+      }
       return await res.json();
     } catch (e) {
       console.error('Failed to fetch Master Index', e);
@@ -235,11 +251,27 @@ export class SRSEngine {
     try {
       const index = await this.fetchMasterIndex();
       index[code.toUpperCase()] = blobId;
-      const res = await fetch(`https://jsonblob.com/api/jsonBlob/${this.MASTER_INDEX_BLOB_ID}`, {
+      let res = await fetch(`https://jsonblob.com/api/jsonBlob/${this.MASTER_INDEX_BLOB_ID}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(index)
       });
+      if (res.status === 404 || !res.ok) {
+        const createRes = await fetch(`https://jsonblob.com/api/jsonBlob`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(index)
+        });
+        if (createRes.ok) {
+          const loc = createRes.headers.get('Location');
+          if (loc) {
+            const parts = loc.split('/');
+            this.MASTER_INDEX_BLOB_ID = parts[parts.length - 1];
+            localStorage.setItem('starbucks_master_index_id', this.MASTER_INDEX_BLOB_ID);
+          }
+          return createRes.ok;
+        }
+      }
       return res.ok;
     } catch (e) {
       console.error('Failed to update Master Index', e);
