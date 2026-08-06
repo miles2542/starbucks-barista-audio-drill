@@ -16,6 +16,35 @@ export class SRSEngine {
   private static STORAGE_KEY = 'starbucks_srs_weights';
   private static MASTER_INDEX_BLOB_ID = '019fcd83-3d4a-7924-a444-3f85f9cdc26c';
 
+  static getDisabledRecipeIds(): string[] {
+    const saved = localStorage.getItem('starbucks_disabled_recipes');
+    if (!saved) return [];
+    try {
+      return JSON.parse(saved);
+    } catch {
+      return [];
+    }
+  }
+
+  static setDisabledRecipeIds(ids: string[]) {
+    localStorage.setItem('starbucks_disabled_recipes', JSON.stringify(ids));
+    window.dispatchEvent(new Event('starbucks_srs_sync_updated'));
+  }
+
+  static toggleRecipeDisabled(id: string) {
+    const ids = this.getDisabledRecipeIds();
+    const newIds = ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id];
+    this.setDisabledRecipeIds(newIds);
+    if (this.getSyncCode()) {
+      this.pushSync();
+    }
+  }
+
+  static getActiveRecipes(allRecipes: Recipe[]): Recipe[] {
+    const disabledIds = new Set(this.getDisabledRecipeIds());
+    return allRecipes.filter(r => !disabledIds.has(r.id));
+  }
+
   static loadAll(): Record<string, WeightData> {
     const saved = localStorage.getItem(this.STORAGE_KEY);
     if (!saved) return {};
@@ -256,7 +285,8 @@ export class SRSEngine {
       if (!blobId) {
         const payload = {
           weights: all,
-          history: HistoryEngine.getRawLogs()
+          history: HistoryEngine.getRawLogs(),
+          disabledRecipes: this.getDisabledRecipeIds()
         };
         const res = await fetch(`https://jsonblob.com/api/jsonBlob`, {
           method: 'POST',
@@ -275,7 +305,8 @@ export class SRSEngine {
         // Overwrite existing blob
         const payload = {
           weights: all,
-          history: HistoryEngine.getRawLogs()
+          history: HistoryEngine.getRawLogs(),
+          disabledRecipes: this.getDisabledRecipeIds()
         };
         await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
           method: 'PUT',
@@ -361,7 +392,8 @@ export class SRSEngine {
     const all = this.loadAll();
     const payload = {
       weights: all,
-      history: HistoryEngine.getRawLogs()
+      history: HistoryEngine.getRawLogs(),
+      disabledRecipes: this.getDisabledRecipeIds()
     };
     try {
       await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
@@ -440,6 +472,11 @@ export class SRSEngine {
           HistoryEngine.setRawLogs(deduplicated);
       }
 
+      if (remoteData.disabledRecipes && Array.isArray(remoteData.disabledRecipes)) {
+          this.setDisabledRecipeIds(remoteData.disabledRecipes);
+          changed = true;
+      }
+
       if (changed) {
         localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
         this.saveAll(localAll);
@@ -468,7 +505,8 @@ export class SRSEngine {
     const all = this.loadAll();
     const payload = {
       weights: all,
-      history: HistoryEngine.getRawLogs()
+      history: HistoryEngine.getRawLogs(),
+      disabledRecipes: this.getDisabledRecipeIds()
     };
     try {
       const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
@@ -499,6 +537,10 @@ export class SRSEngine {
       
       if (remoteData.history && Array.isArray(remoteData.history)) {
           HistoryEngine.setRawLogs(remoteData.history);
+      }
+      
+      if (remoteData.disabledRecipes && Array.isArray(remoteData.disabledRecipes)) {
+          this.setDisabledRecipeIds(remoteData.disabledRecipes);
       }
       
       localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));

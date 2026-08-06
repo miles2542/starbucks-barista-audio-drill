@@ -91,6 +91,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
   const [toastNotification, setToastNotification] = useState<string | null>(null);
   
   const [autoAdvanceMode, setAutoAdvanceMode] = useState<'handsfree' | 'manual'>('handsfree');
+  const [activeRecipes, setActiveRecipes] = useState<Recipe[]>([]);
 
   const timersRef = useRef<number[]>([]);
 
@@ -99,6 +100,13 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
     timersRef.current = [];
     window.speechSynthesis.cancel();
   }, []);
+
+  useEffect(() => {
+    setActiveRecipes(SRSEngine.getActiveRecipes(recipes));
+    const handleSync = () => setActiveRecipes(SRSEngine.getActiveRecipes(recipes));
+    window.addEventListener('starbucks_srs_sync_updated', handleSync);
+    return () => window.removeEventListener('starbucks_srs_sync_updated', handleSync);
+  }, [recipes]);
 
   useEffect(() => {
     return () => {
@@ -114,10 +122,10 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
   const apiKey = localStorage.getItem('gemini_api_key') || '';
 
   useEffect(() => {
-    if (recipes.length > 0 && !currentRecipe) {
-      setCurrentRecipe(SRSEngine.getNextRecipe(recipes));
+    if (activeRecipes.length > 0 && (!currentRecipe || !activeRecipes.find(r => r.id === currentRecipe.id))) {
+      setCurrentRecipe(SRSEngine.getNextRecipe(activeRecipes));
     }
-  }, [recipes]);
+  }, [activeRecipes, currentRecipe]);
 
   const startListeningInternal = (targetRecipe: Recipe) => {
     setIsListening(true);
@@ -257,7 +265,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
     setLiveTranscript('');
     setCurrentDebugLog(null);
 
-    const nextRecipe = SRSEngine.getNextRecipe(recipes, currentRecipe?.id);
+    const nextRecipe = SRSEngine.getNextRecipe(activeRecipes, currentRecipe?.id);
     if (nextRecipe) {
       setCurrentRecipe(nextRecipe);
     }
@@ -269,7 +277,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
     setLiveTranscript('');
     setCurrentDebugLog(null);
     
-    const nextRecipe = SRSEngine.getNextRecipe(recipes, currentRecipe?.id);
+    const nextRecipe = SRSEngine.getNextRecipe(activeRecipes, currentRecipe?.id);
 
     if (nextRecipe) {
       setCurrentRecipe(nextRecipe);
@@ -286,6 +294,20 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
     }
   };
 
+  if (activeRecipes.length === 0) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+        <Ban size={48} style={{ color: 'var(--status-fail)', marginBottom: '1rem' }} />
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 8px 0', color: '#FFF' }}>
+          No Recipes Active
+        </h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: 0 }}>
+          You have paused all recipes. Please enable at least 1 recipe in the SRS Metrics tab to continue drilling.
+        </p>
+      </div>
+    );
+  }
+
   if (!currentRecipe) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
@@ -298,7 +320,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
         </p>
         <button
           onClick={() => {
-            setCurrentRecipe(SRSEngine.getNextRecipe(recipes));
+            setCurrentRecipe(SRSEngine.getNextRecipe(activeRecipes));
           }}
           style={{
             marginTop: '1.5rem',
@@ -326,11 +348,23 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       
       {/* Top Control Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-primary)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
-          <button
-            onClick={() => setAutoAdvanceMode('handsfree')}
-            style={{
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ 
+            padding: '0.4rem 0.85rem', 
+            background: 'rgba(5, 150, 105, 0.15)', 
+            border: '1px solid var(--accent-mint)', 
+            borderRadius: '6px', 
+            color: 'var(--accent-mint)', 
+            fontWeight: 800, 
+            fontSize: '0.8rem' 
+          }}>
+            Drill Pool: {activeRecipes.length} / {recipes.length}
+          </div>
+          <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-primary)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+            <button
+              onClick={() => setAutoAdvanceMode('handsfree')}
+              style={{
               padding: '0.4rem 0.85rem',
               borderRadius: '6px',
               border: 'none',
@@ -364,6 +398,7 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           >
             <Sliders size={14} /> Manual
           </button>
+        </div>
         </div>
 
         <button

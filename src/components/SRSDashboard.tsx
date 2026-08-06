@@ -93,10 +93,38 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
   const [selectedRecipeHistoryId, setSelectedRecipeHistoryId] = useState<string | null>(null);
   const [debugLogModal, setDebugLogModal] = useState<EvaluationDebugLog | null>(null);
   const [toastNotification, setToastNotification] = useState<string | null>(null);
+  
+  const [disabledIds, setDisabledIds] = useState<Set<string>>(new Set(SRSEngine.getDisabledRecipeIds()));
 
   useEffect(() => {
     setHistoryLogs(HistoryEngine.getAllLogs());
+    
+    const handleSyncUpdate = () => {
+      setDisabledIds(new Set(SRSEngine.getDisabledRecipeIds()));
+    };
+    window.addEventListener('starbucks_srs_sync_updated', handleSyncUpdate);
+    return () => {
+      window.removeEventListener('starbucks_srs_sync_updated', handleSyncUpdate);
+    };
   }, []);
+
+  const handleToggleRecipe = (id: string) => {
+    SRSEngine.toggleRecipeDisabled(id);
+    setDisabledIds(new Set(SRSEngine.getDisabledRecipeIds()));
+  };
+
+  const handleSelectAll = () => {
+    SRSEngine.setDisabledRecipeIds([]);
+    setDisabledIds(new Set());
+    if (SRSEngine.getSyncCode()) SRSEngine.pushSync();
+  };
+
+  const handleDeselectAll = () => {
+    const allIds = recipes.map(r => r.id);
+    SRSEngine.setDisabledRecipeIds(allIds);
+    setDisabledIds(new Set(allIds));
+    if (SRSEngine.getSyncCode()) SRSEngine.pushSync();
+  };
 
   const refreshLogs = () => {
     setHistoryLogs(HistoryEngine.getAllLogs());
@@ -224,14 +252,42 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       
-      {/* Header Title */}
-      <div>
-        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-mint)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-          SRS MEMORY METRICS & ANALYTICS
-        </span>
-        <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '4px 0 0 0', color: '#FFF' }}>
-          Recipe SRS Dashboard
-        </h1>
+      {/* Header Title & Bulk Actions */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-mint)', letterSpacing: '1px', textTransform: 'uppercase' }}>
+            SRS MEMORY METRICS & ANALYTICS
+          </span>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '4px 0 0 0', color: '#FFF' }}>
+            Recipe SRS Dashboard
+          </h1>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ 
+            padding: '0.5rem 0.85rem', 
+            background: 'rgba(5, 150, 105, 0.15)', 
+            border: '1px solid var(--accent-mint)', 
+            borderRadius: '6px', 
+            color: 'var(--accent-mint)', 
+            fontWeight: 800, 
+            fontSize: '0.85rem' 
+          }}>
+            Active Drill Pool: {recipes.length - disabledIds.size} / {recipes.length}
+          </div>
+          <button
+            onClick={handleSelectAll}
+            style={{ padding: '0.5rem 0.85rem', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer' }}
+          >
+            Select All
+          </button>
+          <button
+            onClick={handleDeselectAll}
+            style={{ padding: '0.5rem 0.85rem', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer' }}
+          >
+            Deselect All
+          </button>
+        </div>
       </div>
 
       {/* Global Analytics Overview Cards */}
@@ -391,6 +447,7 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
             <thead>
               <tr style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <th style={{ padding: '0.85rem 1rem' }}>Active</th>
                 <th style={{ padding: '0.85rem 1rem' }}>Recipe Name</th>
                 <th style={{ padding: '0.85rem 1rem' }}>Type</th>
                 <th style={{ padding: '0.85rem 1rem' }}>SRS Weight</th>
@@ -403,8 +460,18 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
             </thead>
             <tbody>
               {filteredItems.map(g => (
-                <tr key={g.recipe.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                <tr key={g.recipe.id} style={{ borderBottom: '1px solid var(--border-subtle)', opacity: disabledIds.has(g.recipe.id) ? 0.65 : 1 }}>
                   
+                  {/* Active Toggle */}
+                  <td style={{ padding: '0.85rem 1rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={!disabledIds.has(g.recipe.id)}
+                      onChange={() => handleToggleRecipe(g.recipe.id)}
+                      style={{ cursor: 'pointer', width: '18px', height: '18px', accentColor: 'var(--accent-mint)' }}
+                    />
+                  </td>
+
                   {/* Drink Name */}
                   <td style={{ padding: '0.85rem 1rem', fontWeight: 800, color: '#FFF' }}>
                     {g.displayName}
@@ -505,11 +572,21 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
       {/* Mobile Card View for SRS Data */}
       <div className="srs-card-view hidden-desktop">
         {filteredItems.map(g => (
-          <div key={g.recipe.id} className="card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div key={g.recipe.id} className="card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', opacity: disabledIds.has(g.recipe.id) ? 0.65 : 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#FFF' }}>{g.displayName}</h3>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Last: {formatRelativeTime(g.lastTimestamp)}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <input
+                  type="checkbox"
+                  checked={!disabledIds.has(g.recipe.id)}
+                  onChange={() => handleToggleRecipe(g.recipe.id)}
+                  style={{ cursor: 'pointer', width: '20px', height: '20px', accentColor: 'var(--accent-mint)' }}
+                />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#FFF' }}>
+                    {g.displayName} {disabledIds.has(g.recipe.id) && <span style={{ fontSize: '0.7rem', color: '#EF4444', marginLeft: '4px' }}>(PAUSED)</span>}
+                  </h3>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Last: {formatRelativeTime(g.lastTimestamp)}</div>
+                </div>
               </div>
               <span
                 style={{
