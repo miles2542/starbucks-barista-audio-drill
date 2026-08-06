@@ -47,8 +47,8 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
       const passRate = totalReviews > 0 ? Math.round((totalCorrect / totalReviews) * 100) : 0;
       const weight = data.weight || 100;
 
-      // Confidence Score % formula based on SM-2 weight range (10 to 250)
-      const weightPenalty = Math.min(100, Math.max(0, ((weight - 10) / 240) * 100));
+      // Confidence Score % formula based on SM-2 weight range (15 to 250)
+      const weightPenalty = Math.min(100, Math.max(0, ((weight - 15) / 235) * 100));
       let confidenceScore = Math.round(100 - weightPenalty);
       if (totalReviews === 0) confidenceScore = 50;
 
@@ -402,7 +402,13 @@ export function SRSDashboard({ recipes }: SRSDashboardProps) {
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>ACCURACY</span>
                 <span style={{ fontWeight: 800, color: g.passRate >= 80 ? 'var(--accent-mint)' : '#FFF' }}>
-                  {g.totalReviews > 0 ? `${g.passRate}%` : '—'}
+                  {g.totalReviews > 0 ? `${g.passRate}% (${g.totalCorrect}/${g.totalReviews} passed)` : '—'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>SRS WEIGHT</span>
+                <span style={{ fontWeight: 800, color: '#FFF' }}>
+                  {Math.round(g.weight)}
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
