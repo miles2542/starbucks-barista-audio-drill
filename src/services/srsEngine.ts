@@ -1,4 +1,5 @@
 import type { Recipe } from '../types/recipe';
+import { HistoryEngine } from './historyEngine';
 
 export interface WeightData {
   id: string;
@@ -253,10 +254,14 @@ export class SRSEngine {
       let blobId = existingBlobId;
 
       if (!blobId) {
+        const payload = {
+          weights: all,
+          history: HistoryEngine.getRawLogs()
+        };
         const res = await fetch(`https://jsonblob.com/api/jsonBlob`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(all),
+          body: JSON.stringify(payload),
         });
         
         if (!res.ok) throw new Error('Failed to create cloud storage blob');
@@ -268,10 +273,14 @@ export class SRSEngine {
         blobId = parts[parts.length - 1];
       } else {
         // Overwrite existing blob
+        const payload = {
+          weights: all,
+          history: HistoryEngine.getRawLogs()
+        };
         await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(all),
+          body: JSON.stringify(payload),
         });
       }
       
@@ -321,7 +330,8 @@ export class SRSEngine {
         };
       }
 
-      const remoteAll: Record<string, WeightData> = await res.json();
+      const remoteData: any = await res.json();
+      const remoteAll: Record<string, WeightData> = remoteData.weights || remoteData;
       const itemCount = Object.keys(remoteAll).length;
 
       localStorage.setItem(`starbucks_srs_blob_${cleanCode}`, blobId);
@@ -349,11 +359,15 @@ export class SRSEngine {
     if (!blobId) return;
 
     const all = this.loadAll();
+    const payload = {
+      weights: all,
+      history: HistoryEngine.getRawLogs()
+    };
     try {
       await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(all),
+        body: JSON.stringify(payload),
       });
     } catch (e) {
       console.error('Failed to push sync', e);
@@ -369,7 +383,8 @@ export class SRSEngine {
     try {
       const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, { cache: 'no-cache' });
       if (!res.ok) return;
-      const remoteAll: Record<string, WeightData> = await res.json();
+      const remoteData: any = await res.json();
+      const remoteAll: Record<string, WeightData> = remoteData.weights || remoteData;
       
       const localAll = this.loadAll();
       let changed = false;
@@ -416,6 +431,14 @@ export class SRSEngine {
           changed = true;
         }
       }
+      
+      if (remoteData.history && Array.isArray(remoteData.history)) {
+          const localHistory = HistoryEngine.getRawLogs();
+          const merged = [...localHistory, ...remoteData.history];
+          const deduplicated = merged.filter((log, index, self) => index === self.findIndex(t => t.id === log.id));
+          deduplicated.sort((a, b) => b.timestamp - a.timestamp);
+          HistoryEngine.setRawLogs(deduplicated);
+      }
 
       if (changed) {
         localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
@@ -443,11 +466,15 @@ export class SRSEngine {
     if (!blobId) return { success: false, message: 'Could not resolve cloud channel.' };
 
     const all = this.loadAll();
+    const payload = {
+      weights: all,
+      history: HistoryEngine.getRawLogs()
+    };
     try {
       const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(all),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         return { success: true, message: 'Successfully pushed local progress to cloud.' };
@@ -467,7 +494,12 @@ export class SRSEngine {
     try {
       const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, { cache: 'no-cache' });
       if (!res.ok) return { success: false, message: 'Failed to download from cloud server.' };
-      const remoteAll: Record<string, WeightData> = await res.json();
+      const remoteData: any = await res.json();
+      const remoteAll: Record<string, WeightData> = remoteData.weights || remoteData;
+      
+      if (remoteData.history && Array.isArray(remoteData.history)) {
+          HistoryEngine.setRawLogs(remoteData.history);
+      }
       
       localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
       this.saveAll(remoteAll);

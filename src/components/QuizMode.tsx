@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Recipe } from '../types/recipe';
 import { audioListener, speakTextGemini, speakTextWeb } from '../services/audioEngine';
 import { SRSEngine } from '../services/srsEngine';
+import { HistoryEngine } from '../services/historyEngine';
 import { evaluateWithGemini, lastEvaluationDebugLog, type EvaluationDebugLog, type EvaluationResult } from '../services/geminiGrader';
 import { Mic, Check, X, Loader, Award, RefreshCw, Square, Terminal, XCircle, MessageSquare, Sparkles, Sliders, RotateCcw, Ban, Shuffle, AlertTriangle, Key, Info } from 'lucide-react';
 
@@ -161,6 +162,17 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
           if (!result.isError) {
             const allIds = recipes.map(r => r.id);
             SRSEngine.updateItem(targetRecipe.id, result.pass, allIds);
+            if (lastEvaluationDebugLog) {
+              HistoryEngine.addLog({
+                timestamp: Date.now(),
+                recipeId: targetRecipe.id,
+                recipeName: targetRecipe.name,
+                recipeCode: targetRecipe.code,
+                pass: result.pass,
+                transcript: result.transcribedSpeech || textToEvaluate,
+                debugLog: lastEvaluationDebugLog
+              }, recordedBlob || undefined);
+            }
           }
 
           if (result.isError) {
@@ -654,6 +666,13 @@ export function QuizMode({ recipes, onComplete }: QuizModeProps) {
                     stopAllAudioAndTimers();
                     const allIds = recipes.map(r => r.id);
                     SRSEngine.revertAndReGrade(currentRecipe.id, !evaluation.pass, allIds);
+                    
+                    // We need to find the latest log for this recipe and update it
+                    const logs = HistoryEngine.getLogsForRecipe(currentRecipe.id);
+                    if (logs.length > 0) {
+                      HistoryEngine.updateLogGrade(logs[0].id, !evaluation.pass);
+                    }
+                    
                     setEvaluation({ ...evaluation, pass: !evaluation.pass });
                     setToastNotification(`Grade corrected to ${!evaluation.pass ? 'PASS' : 'FAIL'}`);
                   }
