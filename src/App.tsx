@@ -32,7 +32,7 @@ function App() {
   }, [recipes]);
 
   useEffect(() => {
-    SRSEngine.initAutoSync();
+    const cleanup = SRSEngine.initAutoSync();
     const handleSyncUpdate = () => {
       // Trigger a re-render or handle UI updates if necessary.
       // Currently, SRSEngine manages its own state and next drills fetch it directly.
@@ -40,6 +40,7 @@ function App() {
     window.addEventListener('starbucks_srs_sync_updated', handleSyncUpdate);
     return () => {
       window.removeEventListener('starbucks_srs_sync_updated', handleSyncUpdate);
+      if (cleanup) cleanup();
     };
   }, []);
 

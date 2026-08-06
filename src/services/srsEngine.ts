@@ -85,6 +85,7 @@ export class SRSEngine {
           } else {
             all[rid].weight = Math.min(250, Math.round(all[rid].weight * 1.05));
           }
+          all[rid].lastGradedTimestamp = Date.now();
         }
       }
     });
@@ -376,8 +377,42 @@ export class SRSEngine {
       for (const id in remoteAll) {
         const remote = remoteAll[id];
         const local = localAll[id];
-        if (!local || (remote.lastGradedTimestamp || 0) > (local.lastGradedTimestamp || 0)) {
+        
+        if (!local) {
           localAll[id] = remote;
+          changed = true;
+          continue;
+        }
+
+        let itemChanged = false;
+        
+        const newCorrect = Math.max(local.correctCount || 0, remote.correctCount || 0);
+        if (newCorrect !== local.correctCount) {
+          local.correctCount = newCorrect;
+          itemChanged = true;
+        }
+
+        const newIncorrect = Math.max(local.incorrectCount || 0, remote.incorrectCount || 0);
+        if (newIncorrect !== local.incorrectCount) {
+          local.incorrectCount = newIncorrect;
+          itemChanged = true;
+        }
+
+        const remoteTime = remote.lastGradedTimestamp || 0;
+        const localTime = local.lastGradedTimestamp || 0;
+        const remoteTotal = (remote.correctCount || 0) + (remote.incorrectCount || 0);
+        const localTotal = (local.correctCount || 0) + (local.incorrectCount || 0);
+
+        if (remoteTime > localTime || (remoteTime === localTime && remoteTotal > localTotal)) {
+          local.weight = remote.weight;
+          local.consecutiveCorrect = remote.consecutiveCorrect;
+          local.turnsSinceLastGraded = remote.turnsSinceLastGraded;
+          local.lastSpeedMs = remote.lastSpeedMs;
+          local.lastGradedTimestamp = remote.lastGradedTimestamp;
+          itemChanged = true;
+        }
+
+        if (itemChanged) {
           changed = true;
         }
       }
@@ -401,17 +436,70 @@ export class SRSEngine {
     return false;
   }
 
+  static async pushToCloud() {
+    const code = this.getSyncCode();
+    if (!code) return { success: false, message: 'No sync code active.' };
+    const blobId = await this.resolveBlobIdFromCode(code);
+    if (!blobId) return { success: false, message: 'Could not resolve cloud channel.' };
+
+    const all = this.loadAll();
+    try {
+      const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(all),
+      });
+      if (res.ok) {
+        return { success: true, message: 'Successfully pushed local progress to cloud.' };
+      }
+      return { success: false, message: 'Failed to push to cloud server.' };
+    } catch (e: any) {
+      return { success: false, message: `Network error: ${e?.message}` };
+    }
+  }
+
+  static async downloadFromCloud() {
+    const code = this.getSyncCode();
+    if (!code) return { success: false, message: 'No sync code active.' };
+    const blobId = await this.resolveBlobIdFromCode(code);
+    if (!blobId) return { success: false, message: 'Could not resolve cloud channel.' };
+
+    try {
+      const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, { cache: 'no-cache' });
+      if (!res.ok) return { success: false, message: 'Failed to download from cloud server.' };
+      const remoteAll: Record<string, WeightData> = await res.json();
+      
+      localStorage.setItem('starbucks_srs_backup', JSON.stringify(this.loadAll()));
+      this.saveAll(remoteAll);
+      window.dispatchEvent(new Event('starbucks_srs_sync_updated'));
+      return { success: true, message: 'Successfully downloaded and applied cloud progress.' };
+    } catch (e: any) {
+      return { success: false, message: `Network error: ${e?.message}` };
+    }
+  }
+
+  static async bidirectionalSync() {
+    await this.pullSync();
+    await this.pushSync();
+  }
+
   static initAutoSync() {
     if (this.getSyncCode()) {
       this.pullSync();
     }
     
-    window.addEventListener('focus', () => {
+    const onFocus = () => {
       if (this.getSyncCode()) this.pullSync();
-    });
+    };
+    window.addEventListener('focus', onFocus);
 
-    setInterval(() => {
+    const interval = setInterval(() => {
       if (this.getSyncCode()) this.pullSync();
     }, 30000);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      clearInterval(interval);
+    };
   }
 }

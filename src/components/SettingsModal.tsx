@@ -147,13 +147,35 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
 
   const handleManualSync = async () => {
     setIsConnectingCloud(true);
-    await SRSEngine.pushSync();
-    await SRSEngine.pullSync();
+    await SRSEngine.bidirectionalSync();
     setIsConnectingCloud(false);
     setModalNotice({
       title: 'Sync Complete',
-      message: `Latest progress synced with cloud channel '${SRSEngine.getSyncCode()}'.`,
+      message: `Bidirectional sync completed with cloud channel '${SRSEngine.getSyncCode()}'.`,
       type: 'success'
+    });
+  };
+
+  const handlePushToCloud = async () => {
+    setIsConnectingCloud(true);
+    const result = await SRSEngine.pushToCloud();
+    setIsConnectingCloud(false);
+    setModalNotice({
+      title: result.success ? 'Push Successful' : 'Push Failed',
+      message: result.message,
+      type: result.success ? 'success' : 'error'
+    });
+  };
+
+  const handleDownloadFromCloud = async () => {
+    setIsConnectingCloud(true);
+    const result = await SRSEngine.downloadFromCloud();
+    setIsConnectingCloud(false);
+    setModalNotice({
+      title: result.success ? 'Download Successful' : 'Download Failed',
+      message: result.message,
+      type: result.success ? 'success' : 'error',
+      onReload: result.success
     });
   };
 
@@ -662,7 +684,47 @@ export function SettingsModal({ onResetRecipes }: SettingsModalProps) {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={handlePushToCloud}
+                disabled={isConnectingCloud}
+                style={{
+                  background: 'var(--bg-primary)',
+                  color: 'white',
+                  border: '1px solid var(--border-subtle)',
+                  padding: '0.4rem 0.75rem',
+                  borderRadius: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <Upload size={14} /> Push to Cloud
+              </button>
+
+              <button
+                onClick={handleDownloadFromCloud}
+                disabled={isConnectingCloud}
+                style={{
+                  background: 'var(--bg-primary)',
+                  color: 'white',
+                  border: '1px solid var(--border-subtle)',
+                  padding: '0.4rem 0.75rem',
+                  borderRadius: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <Download size={14} /> Download from Cloud
+              </button>
+
               <button
                 onClick={handleManualSync}
                 disabled={isConnectingCloud}
