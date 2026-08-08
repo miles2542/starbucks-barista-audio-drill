@@ -7,8 +7,8 @@
     "sizes": ["Short", "Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "Steam milk: 1-3s",
-      "queueShots": "1 2 2 3",
-      "pumpSyrup": "2 3 4 5 (only if requested)",
+      "queueShots": "1 2 2 3 (thẳng vào cốc, không vào shot glass)",
+      "pumpSyrup": "2 3 4 5 (mặc định số này áp dụng cho cả flavor và classic syrups trừ công thức đặc biệt sẽ được note), only if requested",
       "finish": "1. Đổ shots vào cốc\n2. Đổ sữa đến dưới miệng cốc 6mm\n3. Thêm bọc cốc (đai chống nóng)\n4. Kết thúc bằng latte art"
     }
   },
@@ -20,8 +20,8 @@
     "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
-      "queueShots": "2 2 3",
-      "pumpSyrup": "3 4 5 (only if requested)",
+      "queueShots": "2 2 3 (vào shot glass)",
+      "pumpSyrup": "3 4 5, only if requested",
       "finish": "1. Đổ sữa đến dưới upper line 6mm\n2. Đổ shots\n3. Đổ đá đến cách miệng cốc 6mm"
     }
   },
@@ -33,8 +33,8 @@
     "sizes": ["Short", "Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "Steam milk: 6-8s (giảm size - trừ Tall/Short)",
-      "queueShots": "1 2 2 3",
-      "pumpSyrup": "1 2 3 4 (only if requested)",
+      "queueShots": "1 2 2 3 (thẳng vào cốc)",
+      "pumpSyrup": "1 2 3 4, only if requested",
       "finish": "1. Đổ shots vào cốc\n2. Đổ sữa đến dưới miệng cốc 6mm\n3. Thêm bọc cốc (đai chống nóng)"
     }
   },
@@ -46,8 +46,8 @@
     "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "Tall size 6-8s (mọi size đều steam milk ở mức Tall)",
-      "queueShots": "2 2 3",
-      "pumpSyrup": "2 3 4 (only if requested)",
+      "queueShots": "2 2 3 (vào shot glass)",
+      "pumpSyrup": "2 3 4, only if requested",
       "finish": "1. Đổ sữa dưới middle line 6mm\n2. Đổ shots\n3. Đổ đá đến top logo\n4. Đổ foam dưới miệng cốc 6mm"
     }
   },
@@ -59,8 +59,8 @@
     "sizes": ["Short", "Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
-      "queueShots": "1 2 3 4",
-      "pumpSyrup": "2 3 4 5 (only if requested)",
+      "queueShots": "1 2 3 4 (thẳng vào cốc)",
+      "pumpSyrup": "2 3 4 5, only if requested",
       "finish": "1. Đổ shots vào cốc\n2. Đổ nước nóng đến miệng cốc 6mm\n3. Thêm bọc cốc (đai chống nóng)"
     }
   },
@@ -72,8 +72,8 @@
     "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
-      "queueShots": "2 3 4",
-      "pumpSyrup": "3 4 5 (only if requested)",
+      "queueShots": "2 3 4 (vào shot glass)",
+      "pumpSyrup": "3 4 5, only if requested",
       "finish": "1. Đổ nước lọc (thường) dưới upper line 6mm\n2. Đổ shots\n3. Đổ đá dưới miệng cốc 6mm"
     }
   },
@@ -85,7 +85,7 @@
     "sizes": ["Short", "Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "Steam milk: 1-3s",
-      "queueShots": "1 2 2 3",
+      "queueShots": "1 2 2 3 (direct cup)",
       "pumpSyrup": "Mocha Sauce 2 3 4 5",
       "finish": "1. Pump mocha sauce trước, xong đổ shots vào\n2. Lắc/khuấy đều shot và sauce\n3. Đổ sữa đến dưới miệng cốc 12mm (không đổ foam)\n4. Thêm whipping cream\n5. Thêm bọc cốc (đai chống nóng)"
     }
@@ -98,9 +98,9 @@
     "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
-      "queueShots": "2 2 3",
+      "queueShots": "2 2 3 (shot glass)",
       "pumpSyrup": "Mocha Sauce 3 4 5",
-      "finish": "1. Pump mocha sauce, xong đổ shots\n2. Lắc/khuấy đều shot và sauce\n3. Đổ sữa đến upper line\n4. Đổ đá đến dưới miệng cốc 6mm\n5. Thêm whipping cream (dùng dome cap)"
+      "finish": "1. Pump mocha sauce, xong đổ shots\n2. Lắc/khuấy đều shot và sauce\n3. Đổ sữa đến upper line\n4. Đổ đá đến dưới miệng cốc 6mm\n5. Thêm whipping cream\n6. Dùng dome cap (Thay vì flat lid)"
     }
   },
   {
@@ -111,9 +111,9 @@
     "sizes": ["Short", "Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "Steam milk: 1-3s",
-      "queueShots": "1 2 2 3",
-      "pumpSyrup": "Vanilla 1 2 3 4 AND Classic 1 2 3 4",
-      "finish": "1. Đổ sữa và foam đến dưới miệng cốc 12mm\n2. Đổ shots (lên trên foam)\n3. Vẽ caramel sauce 7-7-2\n4. Thêm bọc cốc (đai chống nóng)"
+      "queueShots": "1 2 2 3 (shot glass)",
+      "pumpSyrup": "Vanilla 1 2 3 4 AND Classic 1 2 3 4 (e.g. a hot CM Grande will have 3 Vanilla pumps + 3 Classic pumps)",
+      "finish": "1. Đổ sữa và foam đến dưới miệng cốc 12mm\n2. Đổ shots (lúc này đổ sẽ là lên trên foam - extra info)\n3. Vẽ caramel sauce 7-7-2 (7 vertical, 7 horizontal and 2 rounds, but just need to read 7-7-2)\n4. Thêm bọc cốc (đai chống nóng)"
     }
   },
   {
@@ -124,9 +124,9 @@
     "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
-      "queueShots": "2 2 3",
+      "queueShots": "2 2 3 (shot glass)",
       "pumpSyrup": "Vanilla 2 3 4 AND Classic 2 3 4",
-      "finish": "1. Đổ sữa đến vạch cao nhất (upper line)\n2. Đổ đá đến dưới miệng cốc 12mm\n3. Đổ shots (lên trên đá)\n4. Vẽ caramel sauce 7-7-2"
+      "finish": "1. Đổ sữa đến vạch cao nhất (upper line)\n2. Đổ đá đến dưới miệng cốc 12mm\n3. Đổ shots (lên trên đá - extra info)\n4. Vẽ caramel sauce 7-7-2"
     }
   },
   {
@@ -137,9 +137,9 @@
     "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
-      "queueShots": "2 3 4",
-      "pumpSyrup": "AD Sauce (sữa đặc) 2 3 4",
-      "finish": "1. Pump AD Sauce vào cốc, xong đổ shots\n2. Khuấy/lắc đều shot và sauce\n3. Đổ đá đến top logo\n4. Đổ SCDE Foam đến dưới miệng cốc 6mm\n5. Rắc 3-4 lần cinnamon powder lên trên foam"
+      "queueShots": "2 3 4 (shot glass)",
+      "pumpSyrup": "AD Sauce 2 3 4",
+      "finish": "1. Pump AD Sauce (sữa đặc) vào cốc, xong đổ shots\n2. Khuấy/lắc đều shot và sauce\n3. Đổ đá đến top logo\n4. Đổ SCDE Foam đến dưới miệng cốc 6mm\n5. Rắc 3-4 lần cinnamon powder lên (trên foam)"
     }
   },
   {
@@ -150,9 +150,9 @@
     "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
-      "queueShots": "2 3 4",
-      "pumpSyrup": "AD Sauce (sữa đặc) 2 3 4",
-      "finish": "1. Pump AD Sauce vào shaker, đổ shots vào, lắc đều\n2. Đổ đá đến vạch 4 trên shaker, đậy nắp lắc 5 lần\n3. Đổ hỗn hợp vào cốc"
+      "queueShots": "2 3 4 (shot glass)",
+      "pumpSyrup": "AD Sauce 2 3 4",
+      "finish": "1. Pump AD Sauce vào shaker, đổ shots vào, lắc đều\n2. Đổ đá đến vạch 4 trên shaker, (đậy nắp) lắc 5 lần\n3. Đổ hỗn hợp vào cốc"
     }
   },
   {
@@ -163,8 +163,8 @@
     "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
-      "queueShots": "2 3 4",
-      "pumpSyrup": "AD Sauce (sữa đặc) 2 3 4",
+      "queueShots": "2 3 4 (shot glass)",
+      "pumpSyrup": "AD Sauce 2 3 4",
       "finish": "1. Pump AD Sauce vào cốc, đổ shots, lắc/khuấy đều\n2. Đổ Coconut milk đến middle line\n3. Đổ đá đến top logo\n4. Đổ Coconut Cold Foam đến dưới miệng cốc 6mm"
     }
   },
@@ -175,9 +175,9 @@
     "type": "hot",
     "sizes": ["Short", "Tall", "Grande", "Venti"],
     "steps": {
-      "steamMilk": "Steam milk: 1-3s (non-fat/low-fat milk)",
-      "queueShots": "1 2 3 4",
-      "pumpSyrup": "AD Sauce 2 3 4 5",
+      "steamMilk": "Steam milk: 1-3s (non-fat/low milk, they're the same thing)",
+      "queueShots": "1 2 3 4 (shot glass)",
+      "pumpSyrup": "AD sauce 2 3 4 5",
       "finish": "1. Pump AD sauce vào cốc\n2. Đổ nước nóng đến 1/2 cốc\n3. Khuấy/lắc đều cho tan AD và nước nóng\n4. Đổ sữa non-fat/low-fat đến top logo (3/4 cốc), không đổ foam\n5. Đổ shot\n6. Thêm Espresso Whipping Cream và rắc Coffee Powder\n7. Thêm bọc cốc (đai chống nóng)"
     }
   },
@@ -189,8 +189,8 @@
     "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
-      "queueShots": "2 3 4",
-      "pumpSyrup": "AD Sauce 3 4 5",
+      "queueShots": "2 3 4 (shot glass)",
+      "pumpSyrup": "AD sauce 3 4 5",
       "finish": "1. Pump AD sauce vào cốc\n2. Đổ sữa non-fat/low-fat đến dưới upper line 6mm\n3. Khuấy đều sữa và AD\n4. Đổ đá đến dưới miệng cốc 12mm\n5. Đổ shot\n6. Thêm Espresso Whipping Cream và rắc Coffee Powder"
     }
   },
@@ -202,8 +202,8 @@
     "sizes": ["Short", "Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "Steam milk: 1-3s (Almond milk)",
-      "queueShots": "1 2 2 3",
-      "pumpSyrup": "Hazelnut 2 3 4 5 AND Classic 2 3 4 5",
+      "queueShots": "1 2 2 3 (direct cup)",
+      "pumpSyrup": "Hazelnut 2 3 4 5 AND Classic 2 3 4 5 (both types)",
       "finish": "1. Add syrup vào cốc\n2. Đổ shot vào cốc\n3. Đổ sữa đến dưới miệng cốc 6mm\n4. Thêm bọc cốc (đai chống nóng)"
     }
   },
@@ -216,7 +216,7 @@
     "steps": {
       "steamMilk": "None",
       "queueShots": "2 2 3",
-      "pumpSyrup": "Hazelnut 3 4 5 AND Classic 3 4 5",
+      "pumpSyrup": "Hazelnut 3 4 5 AND Classic 3 4 5 (both types)",
       "finish": "1. Add syrup vào cốc\n2. Đổ sữa đến dưới upper line 6mm\n3. Đổ shot\n4. Đổ đá đến dưới miệng cốc 6mm"
     }
   },
@@ -229,8 +229,8 @@
     "steps": {
       "steamMilk": "None",
       "queueShots": "2 2 3",
-      "pumpSyrup": "Brown Sugar Syrup 3 4 5",
-      "finish": "1. Pump đường nâu vào shaker\n2. Múc đá đến vạch 4\n3. Rắc cinnamon powder 2 lần\n4. Đổ shot\n5. Lắc 10 lần, xong đổ mixture vào cốc\n6. Đổ oatmilk theo size: 90ml cho Tall, 100ml cho Grande, 110ml cho Venti"
+      "pumpSyrup": "Brown Sugar Syrups (đường nâu) 3 4 5",
+      "finish": "1. Pump đường nâu vào shaker\n2. Múc đá đến vạch 4\n3. Rắc cinnamon powder 2 lần\n4. Đổ shot\n5. Lắc 10 lần, xong đổ mixture vào cốc\n6. Đổ sữa oatmilk theo size: 90ml cho Tall, 100ml cho Grande, 110ml cho Venti (hay đọc cách khác là đổ oatmilk 90 100 110ml)"
     }
   },
   {
@@ -241,8 +241,8 @@
     "sizes": ["Short", "Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "Steam milk: 1-3s",
-      "queueShots": "2 3 4 4 (Ristretto)",
-      "pumpSyrup": "2 3 4 5 (only if requested)",
+      "queueShots": "2 3 4 4 (Ristretto, direct cup)",
+      "pumpSyrup": "2 3 4 5, only if requested",
       "finish": "1. Đổ shot vào cốc\n2. Đổ sữa đến cách miệng 6mm\n3. Thêm bọc cốc (đai chống nóng)\n4. Kết thúc bằng 1 chấm tròn/latte art"
     }
   },
@@ -254,8 +254,8 @@
     "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
-      "queueShots": "3 4 4 (Ristretto)",
-      "pumpSyrup": "3 4 5 (only if requested)",
+      "queueShots": "3 4 4 (Ristretto, shot glass)",
+      "pumpSyrup": "3 4 5, only if requested",
       "finish": "1. Đổ shot\n2. Đổ sữa đến upper line\n3. Đổ đá đến dưới miệng cốc 6mm"
     }
   },
@@ -267,9 +267,9 @@
     "sizes": ["Tall", "Grande", "Venti"],
     "steps": {
       "steamMilk": "None",
-      "queueShots": "2 2 3",
-      "pumpSyrup": "Classic 2 3 4 (pump đường ngắn / 3.75ml)",
-      "finish": "1. Pump syrup/đường vào shaker\n2. Đổ 1 muỗng đá size Tall vào shaker\n3. Đổ shot\n4. Lắc 10 lần (chưa đổ ra cốc)\n5. Đổ đá đến middle line của cốc\n6. Đổ Cold Foam lên trên bề mặt đá 12mm\n7. Chặn đá và đổ mixture trong shaker vào cốc (lên trên cold foam)"
+      "queueShots": "2 2 3 (shot glass)",
+      "pumpSyrup": "Classic 2 3 4 (luôn có, và phải nói là pump đường ngắn hoặc pump 3.75ml, nếu chỉ nói Classic 2 3 4 thì không được chấp nhận) (Extra info: nếu yêu cầu thêm flavor syrups thì mặc định cũng là 2 3 4)",
+      "finish": "1. Pump syrup/đường vào shaker\n2. Đổ 1 muỗng đá size Tall vào shaker\n3. Đổ shot\n4. Lắc 10 lần (chưa đổ ra cốc)\n5. Đổ đá đến middle line của cốc\n6. Đổ Cold Foam lên trên bề mặt đá 12mm\n7. Chặn đá và đổ mixture trong shaker vào cốc (aka lên trên cold foam)"
     }
   }
 ]
