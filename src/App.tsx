@@ -12,11 +12,11 @@ import './App.css';
 function App() {
   const [activeTab, setActiveTab] = useState('quiz');
   const [recipes, setRecipes] = useState<Recipe[]>(() => {
-    const saved = localStorage.getItem('starbucks_recipes_v5');
+    const saved = localStorage.getItem('starbucks_recipes_v6');
     if (!saved) return initialRecipes as Recipe[];
     try {
       const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed) || parsed.length < (initialRecipes as Recipe[]).length || !parsed.some(r => r.id === 'scde-iced')) {
+      if (!Array.isArray(parsed) || parsed.length < (initialRecipes as Recipe[]).length || !parsed.some(r => r.id === 'cfie-iced')) {
         return initialRecipes as Recipe[];
       }
       return parsed;
@@ -28,7 +28,7 @@ function App() {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(recipes[0] || null);
 
   useEffect(() => {
-    localStorage.setItem('starbucks_recipes_v5', JSON.stringify(recipes));
+    localStorage.setItem('starbucks_recipes_v6', JSON.stringify(recipes));
   }, [recipes]);
 
   useEffect(() => {
@@ -48,7 +48,7 @@ function App() {
 
   const handleResetRecipes = () => {
     setRecipes(initialRecipes as Recipe[]);
-    localStorage.setItem('starbucks_recipes_v5', JSON.stringify(initialRecipes));
+    localStorage.setItem('starbucks_recipes_v6', JSON.stringify(initialRecipes));
     setSelectedRecipe((initialRecipes as Recipe[])[0]);
   };
 

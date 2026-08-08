@@ -167,5 +167,109 @@
       "pumpSyrup": "AD Sauce (sữa đặc) 2 3 4",
       "finish": "1. Pump AD Sauce vào cốc, đổ shots, lắc/khuấy đều\n2. Đổ Coconut milk đến middle line\n3. Đổ đá đến top logo\n4. Đổ Coconut Cold Foam đến dưới miệng cốc 6mm"
     }
+  },
+  {
+    "id": "hot-asian-dolce-latte",
+    "name": "Hot Asian Dolce Latte (ADL: EWC)",
+    "code": "ADL (HOT)",
+    "type": "hot",
+    "sizes": ["Short", "Tall", "Grande", "Venti"],
+    "steps": {
+      "steamMilk": "Steam milk: 1-3s (non-fat/low-fat milk)",
+      "queueShots": "1 2 3 4",
+      "pumpSyrup": "AD Sauce 2 3 4 5",
+      "finish": "1. Pump AD sauce vào cốc\n2. Đổ nước nóng đến 1/2 cốc\n3. Khuấy/lắc đều cho tan AD và nước nóng\n4. Đổ sữa non-fat/low-fat đến top logo (3/4 cốc), không đổ foam\n5. Đổ shot\n6. Thêm Espresso Whipping Cream và rắc Coffee Powder\n7. Thêm bọc cốc (đai chống nóng)"
+    }
+  },
+  {
+    "id": "iced-asian-dolce-latte",
+    "name": "Iced Asian Dolce Latte (ADL: EWC)",
+    "code": "ADL (ICED)",
+    "type": "iced",
+    "sizes": ["Tall", "Grande", "Venti"],
+    "steps": {
+      "steamMilk": "None",
+      "queueShots": "2 3 4",
+      "pumpSyrup": "AD Sauce 3 4 5",
+      "finish": "1. Pump AD sauce vào cốc\n2. Đổ sữa non-fat/low-fat đến dưới upper line 6mm\n3. Khuấy đều sữa và AD\n4. Đổ đá đến dưới miệng cốc 12mm\n5. Đổ shot\n6. Thêm Espresso Whipping Cream và rắc Coffee Powder"
+    }
+  },
+  {
+    "id": "hot-almondmilk-hazelnut-latte",
+    "name": "Hot Almondmilk Hazelnut Latte (AHL)",
+    "code": "AHL (HOT)",
+    "type": "hot",
+    "sizes": ["Short", "Tall", "Grande", "Venti"],
+    "steps": {
+      "steamMilk": "Steam milk: 1-3s (Almond milk)",
+      "queueShots": "1 2 2 3",
+      "pumpSyrup": "Hazelnut 2 3 4 5 AND Classic 2 3 4 5",
+      "finish": "1. Add syrup vào cốc\n2. Đổ shot vào cốc\n3. Đổ sữa đến dưới miệng cốc 6mm\n4. Thêm bọc cốc (đai chống nóng)"
+    }
+  },
+  {
+    "id": "iced-almondmilk-hazelnut-latte",
+    "name": "Iced Almondmilk Hazelnut Latte (AHL)",
+    "code": "AHL (ICED)",
+    "type": "iced",
+    "sizes": ["Tall", "Grande", "Venti"],
+    "steps": {
+      "steamMilk": "None",
+      "queueShots": "2 2 3",
+      "pumpSyrup": "Hazelnut 3 4 5 AND Classic 3 4 5",
+      "finish": "1. Add syrup vào cốc\n2. Đổ sữa đến dưới upper line 6mm\n3. Đổ shot\n4. Đổ đá đến dưới miệng cốc 6mm"
+    }
+  },
+  {
+    "id": "boise-iced",
+    "name": "Brown Sugar Oatmilk Iced Shaken Espresso (BOISE)",
+    "code": "BOISE",
+    "type": "iced",
+    "sizes": ["Tall", "Grande", "Venti"],
+    "steps": {
+      "steamMilk": "None",
+      "queueShots": "2 2 3",
+      "pumpSyrup": "Brown Sugar Syrup 3 4 5",
+      "finish": "1. Pump đường nâu vào shaker\n2. Múc đá đến vạch 4\n3. Rắc cinnamon powder 2 lần\n4. Đổ shot\n5. Lắc 10 lần, xong đổ mixture vào cốc\n6. Đổ oatmilk theo size: 90ml cho Tall, 100ml cho Grande, 110ml cho Venti"
+    }
+  },
+  {
+    "id": "hot-flat-white",
+    "name": "Hot Flat White (FW)",
+    "code": "FW (HOT)",
+    "type": "hot",
+    "sizes": ["Short", "Tall", "Grande", "Venti"],
+    "steps": {
+      "steamMilk": "Steam milk: 1-3s",
+      "queueShots": "2 3 4 4 (Ristretto)",
+      "pumpSyrup": "2 3 4 5 (only if requested)",
+      "finish": "1. Đổ shot vào cốc\n2. Đổ sữa đến cách miệng 6mm\n3. Thêm bọc cốc (đai chống nóng)\n4. Kết thúc bằng 1 chấm tròn/latte art"
+    }
+  },
+  {
+    "id": "iced-flat-white",
+    "name": "Iced Flat White (FW)",
+    "code": "FW (ICED)",
+    "type": "iced",
+    "sizes": ["Tall", "Grande", "Venti"],
+    "steps": {
+      "steamMilk": "None",
+      "queueShots": "3 4 4 (Ristretto)",
+      "pumpSyrup": "3 4 5 (only if requested)",
+      "finish": "1. Đổ shot\n2. Đổ sữa đến upper line\n3. Đổ đá đến dưới miệng cốc 6mm"
+    }
+  },
+  {
+    "id": "cfie-iced",
+    "name": "Cold Foam Iced Espresso (CFIE)",
+    "code": "CFIE",
+    "type": "iced",
+    "sizes": ["Tall", "Grande", "Venti"],
+    "steps": {
+      "steamMilk": "None",
+      "queueShots": "2 2 3",
+      "pumpSyrup": "Classic 2 3 4 (pump đường ngắn / 3.75ml)",
+      "finish": "1. Pump syrup/đường vào shaker\n2. Đổ 1 muỗng đá size Tall vào shaker\n3. Đổ shot\n4. Lắc 10 lần (chưa đổ ra cốc)\n5. Đổ đá đến middle line của cốc\n6. Đổ Cold Foam lên trên bề mặt đá 12mm\n7. Chặn đá và đổ mixture trong shaker vào cốc (lên trên cold foam)"
+    }
   }
 ]
